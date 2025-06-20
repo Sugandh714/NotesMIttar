@@ -21,15 +21,7 @@ function Home() {
 
   return (
     <>
-      {/* <header>
-        <div className="logo">NotesMittar</div>
-        <nav>
-          <Link to="/">Home</Link>
-          <a href="#features">Features</a>
-          <Link to="/scoreboard">Scoreboard</Link>
-          <Link to="/login">Login</Link>
-        </nav>
-      </header> */}
+     
       <Navbar/>
       <section className="hero">
         <div className="hero-text">

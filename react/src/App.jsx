@@ -7,6 +7,8 @@ import Signup from './pages/Signup';
 import Scoreboard from './pages/Scoreboard';
 import Contributor from './pages/Contributor';
 import Upload from './pages/Upload';
+import { Navigate } from 'react-router-dom';
+import ProtectedRoute from './component/ProtectedRoute';
 
 function App() {
   return (
@@ -19,7 +21,14 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path ="/Scoreboard" element ={<Scoreboard/>} />
         <Route path ="/Contributor/:name" element ={<Contributor/>}/>     
-        <Route path ="/Upload" element ={<Upload/>}/>
+        <Route
+    path="/upload"
+    element={
+      <ProtectedRoute>
+        <Upload />
+      </ProtectedRoute>
+    }
+  />
      </Routes>
     </div>
   );

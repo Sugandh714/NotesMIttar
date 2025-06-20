@@ -1,19 +1,25 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import GoogleIcon from '../assets/images/google-icon.jpg'; // Import Google icon image
 import '../style/Auth.css'; // Shared CSS for login/signup
 import Home from  './Home';
 import Navbar from '../component/Navbar';
 
 function Login() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const from = location.state?.from || '/'; 
+  console.log('Redirect after login to:', from);
+
+
   const BASE_URL = 'http://localhost:5000/api';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const navigate = useNavigate();
+
 
     const handleLogin = async (e) => {
   e.preventDefault();
-
   try {
     const res = await fetch(`${BASE_URL}/login`, {
       method: 'POST',
@@ -26,8 +32,11 @@ function Login() {
     if (res.ok) {
       sessionStorage.setItem('token', data.token);
       sessionStorage.setItem('loggedIn', 'true');
-      alert('Login successful!');
-      navigate('/'); // or wherever you want to go
+         navigate(from); // ✅ Good
+      // const redirectPath = location.state?.from || '/';
+      // console.log("Redirected from:", location.state);
+
+      // navigate(redirectPath); // ✅ Go where user intended
     } else {
       alert(data.message || 'Login failed');
     }
@@ -35,6 +44,7 @@ function Login() {
     alert('Error: ' + err.message);
   }
 };
+
 
 
   return (

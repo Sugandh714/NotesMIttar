@@ -89,20 +89,45 @@ const resourceSchema = new mongoose.Schema({
   uploadedAt: { type: Date, default: Date.now }
 });
 const Resource = mongoose.model('Resource', resourceSchema);
-// Upload route
-app.post('/api/upload', upload.single('pdf'), async (req, res) => {
-  const { type, semester, course, subject, unit, year, uploadedBy = 'Anonymous' } = req.body;
-  const file = req.file;
+const authenticate = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ message: 'No token provided' });
 
-  if (!file) return res.status(400).json({ message: 'No file uploaded' });
-
+  const token = authHeader.split(' ')[1];
   try {
-    // Check if 2 files already exist for that category
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
+    const user = await User.findById(decoded.userId);
+    if (!user) return res.status(401).json({ message: 'Invalid token' });
+
+    req.user = user; // Attach user info to the request
+    next();
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid or expired token' });
+  }
+};
+
+// Upload route
+app.post('/api/upload', authenticate, upload.single('pdf'), async (req, res) => {
+  try {
+    const {
+      type,
+      semester,
+      course,
+      subject,
+      unit,
+      year
+    } = req.body;
+
+    const file = req.file;
+    if (!file) return res.status(400).json({ message: 'No PDF uploaded' });
+
+    const unitArray = Array.isArray(unit) ? unit : [unit];
+
     const existingCount = await Resource.countDocuments({
       course,
       semester,
       subject,
-      unit: { $in: unit }, // check any unit match
+      unit: { $in: unitArray },
       status: 'approved'
     });
 
@@ -113,24 +138,36 @@ app.post('/api/upload', upload.single('pdf'), async (req, res) => {
       semester,
       course,
       subject,
-      unit: Array.isArray(unit) ? unit : [unit], // ensure array
-      year: year || '',
-      uploadedBy,
+      unit: unitArray,
+      year,
+      uploadedBy: req.user.name, // 👈 Use name from logged-in user
       status: existingCount >= 2 ? 'pending' : 'approved'
     });
 
     await resource.save();
 
     res.status(200).json({
-      message: existingCount >= 2
-        ? 'Upload pending admin approval'
-        : 'Upload successful',
+      message: resource.status === 'approved'
+        ? 'Upload successful!'
+        : 'Upload pending admin approval.',
       status: resource.status
     });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+app.get('/api/my-resources', authenticate, async (req, res) => {
+  try {
+    const userName = req.user.name;
+    const resources = await Resource.find({ uploadedBy: userName }).sort({ uploadedAt: -1 });
+    res.json(resources);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+
 
 // Serve static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

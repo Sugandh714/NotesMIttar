@@ -18,6 +18,38 @@ const Upload = () => {
   const [file, setFile] = useState(null);
 
   const courseOptions = ['CSE', 'AIML', 'ECE', 'EEE', 'ME', 'IT']; // Add more as needed
+  const subjectsBySemester = {
+  "Sem 1": [
+    "Probability and Statistics",
+    "EVS",
+    "IT Workshop",
+    "Programming with Python",
+    "Communication Skills"
+  ],
+  "Sem 2": [
+    "Applied Maths",
+    "Applied Physics",
+    "Introduction to DS",
+    "Data Structures",
+    "OOPS"
+  ],
+  "Sem 3": [
+    "Discrete Structures",
+    "DBMS",
+    "AI",
+    "Software Engineering",
+    "MSE",
+    "Numerical Method"
+  ],
+  "Sem 4": [
+    "Disaster Management",
+    "Computer Networks",
+    "Operation Management",
+    "Design and Analysis of Algorithm",
+    "Operating System",
+    "Machine Learning"
+  ]
+};
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -46,6 +78,8 @@ const Upload = () => {
 
   const handleSubmit = async (e) => {
   e.preventDefault();
+  const token = sessionStorage.getItem('token');
+
   const formDataObj = new FormData();
 
   for (const key in formData) {
@@ -55,20 +89,40 @@ const Upload = () => {
       formDataObj.append(key, formData[key]);
     }
   }
+
   formDataObj.append('pdf', file);
 
   try {
     const res = await fetch('http://localhost:5000/api/upload', {
       method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
       body: formDataObj
     });
 
     const data = await res.json();
-    alert(data.message);
+
+    if (res.ok) {
+      alert(data.message); // ✅ Show server response (approved or pending)
+      setActiveTab('history'); // ✅ Switch to Contribution History tab
+      setFormData({
+        type: '',
+        semester: '',
+        course: '',
+        subject: '',
+        unit: [],
+        year: '',
+      });
+      setFile(null); // Clear file input
+    } else {
+      alert(data.message || 'Upload failed');
+    }
   } catch (err) {
     alert('Upload failed: ' + err.message);
   }
 };
+
 
 
   return (
@@ -134,17 +188,31 @@ const Upload = () => {
               ))}
             </select>
           </label>
-          <label>
-  Subject:
-  <input
-    type="text"
-    name="subject"
-    placeholder="e.g. DBMS"
-    value={formData.subject}
-    onChange={handleChange}
-    required
-  />
-</label>
+          {formData.course === "AIML" && subjectsBySemester[formData.semester] ? (
+  <label>
+    Subject:
+    <select name="subject" value={formData.subject} onChange={handleChange} required>
+      <option value="">Select Subject</option>
+      {subjectsBySemester[formData.semester].map((subj) => (
+        <option key={subj} value={subj}>{subj}</option>
+      ))}
+    </select>
+  </label>
+) : (
+  <label>
+    Subject:
+    <input
+      type="text"
+      name="subject"
+      placeholder="Enter subject"
+      value={formData.subject}
+      onChange={handleChange}
+      required
+    />
+  </label>
+)}
+
+
 
 {formData.type === 'Notes' && (
   <div className="unit-checkboxes">

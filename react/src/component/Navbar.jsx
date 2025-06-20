@@ -1,4 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+
 import { useEffect, useRef, useState } from 'react';
 import '../style/Navbar.css';
 
@@ -7,16 +9,20 @@ export default function Navbar() {
   const isLoggedIn = sessionStorage.getItem('loggedIn') === 'true';
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef();
-
-  const handleUploadClick = () => {
-    navigate(isLoggedIn ? '/upload' : '/login');
-  };
+  
+const handleUploadClick = () => {
+  if (isLoggedIn) {
+    navigate('/upload');
+  } else {
+    navigate('/login', { state: { from: '/upload' } }); // ✅ FIXED
+  }
+};
 
   const handleLogout = () => {
     sessionStorage.removeItem('loggedIn');
     sessionStorage.removeItem('token');
     setShowMenu(false);
-    navigate('/login');
+    navigate('/');
   };
 
   // Close the dropdown if clicked outside
