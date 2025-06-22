@@ -1,0 +1,97 @@
+.history-container {
+  width: 100vw;
+  padding: 3rem 4rem;
+  background-color: #f5f7fa;
+  font-family: 'Segoe UI', sans-serif;
+  box-sizing: border-box;
+}
+
+.history-title {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: #333;
+  text-align: center;
+}
+
+
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  table-layout: fixed; /* 💡 This is key */
+}
+
+.history-table th,
+.history-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  vertical-align: top;
+  word-wrap: break-word;
+}
+
+.history-table th:nth-child(1),
+.history-table td:nth-child(1) {
+  width: 20%;
+}
+.history-table th:nth-child(2),
+.history-table td:nth-child(2) {
+  width: 15%;
+}
+.history-table th:nth-child(3),
+.history-table td:nth-child(3) {
+  width: 65%;
+}
+
+
+.status {
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.status.accepted {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status.rejected {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status.pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.report-box-wrapper {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.report-box {
+  background: #f9f9f9;
+  padding: 1rem;
+  border-radius: 8px;
+  word-wrap: break-word;
+}
+
+.topics-section ul,
+.suggestion-box ul {
+  list-style: none;
+  padding-left: 1rem;
+  margin: 0.5rem 0;
+}
+
+.suggestion-box {
+  margin-top: 1rem;
+  background-color: #fff7e6;
+  padding: 0.8rem;
+  border-left: 4px solid #ff9800;
+  border-radius: 6px;
+}
+
+

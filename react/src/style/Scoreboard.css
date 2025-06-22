@@ -1,0 +1,44 @@
+.scoreboard-container {
+
+  padding: 2rem;
+  max-width: 800px;
+  margin:4rem auto;
+  background-color: #f9f9ff;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.scoreboard-title {
+  text-align: center;
+  font-size: 2rem;
+  color: #333;
+  margin-bottom: 1.5rem;
+}
+
+.scoreboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.scoreboard-table th,
+.scoreboard-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #ddd;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.scoreboard-table th {
+  background-color: #e2e6f3;
+  color: #333;
+}
+
+.scoreboard-table tr:nth-child(odd) {
+  background-color: #f4f7fb;
+}
+
+.scoreboard-table tr:hover {
+  background-color: #e0ebff;
+  transition: background-color 0.2s ease;
+}

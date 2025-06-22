@@ -1,0 +1,135 @@
+.login-body {
+  background: linear-gradient(135deg, #e8f0fe, #ffffff);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.login-container {
+  background: #ffffff;
+  padding: 2rem 2rem;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  animation: fadeInUp 0.6s ease-in-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.login-container h2 {
+  font-size: 1.8rem;
+  color: #101820;
+  margin-bottom: 0.5rem;
+}
+
+.subtext {
+  font-size: 0.95rem;
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+.login-form input {
+  width: 90%;
+  padding: 0.85rem 1rem;
+  margin: 0.6rem 0;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background-color: #f7f7f7;
+  transition: 0.3s;
+}
+
+.login-form input:focus {
+  border-color: #101820;
+  outline: none;
+  background-color: #fff;
+}
+
+.login-btn {
+  width: 100%;
+  padding: 0.9rem;
+  background-color: #101820;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  margin-top: 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.login-btn:hover {
+  background-color: #333;
+}
+
+.or {
+  margin: 1.2rem 0 0.8rem;
+  color: #888;
+  font-size: 0.9rem;
+  position: relative;
+}
+
+.or::before,
+.or::after {
+  content: '';
+  display: inline-block;
+  height: 1px;
+  width: 40%;
+  background-color: #ccc;
+  vertical-align: middle;
+  margin: 0 8px;
+}
+
+.google-login-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0.9rem;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  margin-top: 0.5rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.google-login-btn:hover {
+  background-color: #f1f1f1;
+}
+
+.google-login-btn img {
+  width: 20px;
+  height: 20px;
+}
+
+.signup-link {
+  margin-top: 1.2rem;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.signup-link a {
+  color: #101820;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.signup-link a:hover {
+  text-decoration: underline;
+}

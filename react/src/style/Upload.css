@@ -1,0 +1,124 @@
+.upload-container {
+  max-width: 800px;
+  margin: 4rem auto;
+  padding: 2rem;
+  background-color: #fefefe;
+  border-radius: 16px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  font-family: 'Segoe UI', sans-serif;
+}
+/* This disables the card look ONLY for Contribution History */
+.full-width {
+  box-shadow: none;
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  max-width: 100%;
+}
+
+.upload-tabs {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.upload-tabs button {
+  padding: 0.7rem 1.5rem;
+  border: none;
+  background-color: #e0e0e0;
+  margin: 0 0.5rem;
+  cursor: pointer;
+  border-radius: 6px;
+  font-weight: bold;
+  color: #333;
+}
+
+.upload-tabs button.active {
+  background-color: #4169e1;
+  color: white;
+}
+
+.upload-form label {
+  display: block;
+  margin: 1rem 0 0.5rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.upload-form select {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  margin-bottom: 1rem;
+}
+
+.upload-form button {
+  margin-top: 1rem;
+  padding: 0.7rem 1.5rem;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.upload-form input[type="number"] {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  margin-bottom: 1rem;
+}
+
+
+.drag-drop-area {
+  border: 2px dashed #aaa;
+  padding: 2rem;
+  text-align: center;
+  margin-bottom: 1rem;
+  border-radius: 10px;
+  background-color: #f9f9f9;
+  color: #666;
+  transition: 0.3s;
+}
+
+.drag-drop-area:hover {
+  background-color: #f1f1f1;
+}
+
+.upload-placeholder {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #666;
+  padding: 3rem 1rem;
+}
+.upload-form input[type="text"],
+.upload-form input[type="number"] {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  margin-bottom: 1rem;
+}
+
+.unit-checkboxes {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.unit-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 0.5rem;
+}
+
+.checkbox-label {
+  background: #f1f1f1;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
