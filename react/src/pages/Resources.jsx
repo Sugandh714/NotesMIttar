@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import '../style/Resources.css'; // You can extract styles from the HTML or reuse parts of Home.css
-
+import Navbar from '../component/Navbar';
 function Resources() {
   const [stage, setStage] = useState(1);
   const [semesters, setSemesters] = useState([]);
@@ -31,6 +31,8 @@ function Resources() {
   const showResources = () => setStage(5);
 
   return (
+    <>
+    <Navbar/>
     <div style={{ padding: '20px' }}>
       <h1>📚 View Resources - NotesMittar</h1>
 
@@ -103,6 +105,7 @@ function Resources() {
         </>
       )}
     </div>
+    </>
   );
 }
 

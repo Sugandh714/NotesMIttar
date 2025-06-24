@@ -4,6 +4,8 @@ import heroImage from '../assets/images/young-female-friends-studying-together.p
 import resourceImg from '../assets/images/resources.PNG';
 import scoreboardImg from '../assets/images/scoreboard.png';
 import smartUploadImg from '../assets/images/smartUpload.PNG';
+import Navbar from '../component/Navbar';
+
 
 function Home() {
   const navigate = useNavigate();
@@ -19,7 +21,7 @@ function Home() {
 
   return (
     <>
-      <header>
+      {/* <header>
         <div className="logo">NotesMittar</div>
         <nav>
           <Link to="/">Home</Link>
@@ -27,8 +29,8 @@ function Home() {
           <Link to="/scoreboard">Scoreboard</Link>
           <Link to="/login">Login</Link>
         </nav>
-      </header>
-
+      </header> */}
+      <Navbar/>
       <section className="hero">
         <div className="hero-text">
           <h1>Exams hain !</h1>
@@ -78,6 +80,7 @@ function Home() {
       <footer>
         <p>© 2025 NotesMittar | Made with ❤️ by Students | Tere Exams Ka Sacha Yaar</p>
       </footer>
+
     </>
   );
 }

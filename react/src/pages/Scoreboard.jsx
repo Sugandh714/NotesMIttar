@@ -1,7 +1,7 @@
 import React from 'react';
 import '../style/Scoreboard.css';
 import { Link } from 'react-router-dom';
-
+import Navbar from '../component/Navbar';
 const contributors = [
   { rank: 1, name: 'Sugandh Kushwaha', contributions: 45 },
   { rank: 2, name: 'Amit Verma', contributions: 38 },
@@ -12,6 +12,8 @@ const contributors = [
 
 const Scoreboard = () => {
   return (
+    <>
+    <Navbar/>
     <div className="scoreboard-container">
       <h1 className="scoreboard-title">🏆 Mittar League Champions</h1>
       <table className="scoreboard-table">
@@ -37,6 +39,7 @@ const Scoreboard = () => {
         </tbody>
       </table>
     </div>
+    </>
   );
 };
 

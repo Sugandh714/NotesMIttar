@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import '../style/Upload.css';
 import ContributionHistory from './ContributionHistory';
-
+import Navbar from '../component/Navbar';
 const Upload = () => {
   const [activeTab, setActiveTab] = useState('upload');
   const [formData, setFormData] = useState({
@@ -49,6 +49,8 @@ const Upload = () => {
   };
 
   return (
+    <>
+    <Navbar/>
     <div className={`upload-container ${activeTab === 'history' ? 'full-width' : ''}`}>
 
       <div className="upload-tabs">
@@ -172,6 +174,7 @@ const Upload = () => {
 
       {activeTab === 'history' && <ContributionHistory/>}
     </div>
+    </>
   );
 };
 
