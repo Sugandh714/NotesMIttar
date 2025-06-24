@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../style/Auth.css';
+import Navbar from '../component/Navbar';
 
 function Signup() {
   const BASE_URL = 'http://localhost:5000/api';
@@ -51,6 +52,8 @@ const handleSignup = async (e) => {
 
 
   return (
+    <>
+    <Navbar/>
     <div className="login-body">
       <div className="login-container">
         <h2>Create your MittarID</h2>
@@ -93,6 +96,7 @@ const handleSignup = async (e) => {
         </p>
       </div>
     </div>
+    </>
   );
 }
 

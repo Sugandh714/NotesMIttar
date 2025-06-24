@@ -3,6 +3,7 @@ import { useState } from 'react';
 import GoogleIcon from '../assets/images/google-icon.jpg'; // Import Google icon image
 import '../style/Auth.css'; // Shared CSS for login/signup
 import Home from  './Home';
+import Navbar from '../component/Navbar';
 
 function Login() {
   const BASE_URL = 'http://localhost:5000/api';
@@ -37,6 +38,8 @@ function Login() {
 
 
   return (
+    <>
+    <Navbar/>
     <div className="login-body">
       <div className="login-container">
         <h2>Welcome back to Mittar</h2>
@@ -72,6 +75,7 @@ function Login() {
         </p>
       </div>
     </div>
+    </>
   );
 }
 
