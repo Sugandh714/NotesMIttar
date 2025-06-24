@@ -2,21 +2,39 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
 import GoogleIcon from '../assets/images/google-icon.jpg'; // Import Google icon image
 import '../style/Auth.css'; // Shared CSS for login/signup
+import Home from  './Home';
 
 function Login() {
+  const BASE_URL = 'http://localhost:5000/api';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (email && password) {
+    const handleLogin = async (e) => {
+  e.preventDefault();
+
+  try {
+    const res = await fetch(`${BASE_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      sessionStorage.setItem('token', data.token);
       sessionStorage.setItem('loggedIn', 'true');
-      navigate('/upload'); // Redirect after login
+      alert('Login successful!');
+      navigate('/'); // or wherever you want to go
     } else {
-      alert('Please fill all fields.');
+      alert(data.message || 'Login failed');
     }
-  };
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+};
+
 
   return (
     <div className="login-body">
