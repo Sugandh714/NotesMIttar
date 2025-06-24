@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import '../style/Upload.css';
 import ContributionHistory from './ContributionHistory';
 import Navbar from '../component/Navbar';
+import ContactUs from '../component/ContactUs';
+
 const Upload = () => {
   const [activeTab, setActiveTab] = useState('upload');
   const [formData, setFormData] = useState({
@@ -174,6 +176,7 @@ const Upload = () => {
 
       {activeTab === 'history' && <ContributionHistory/>}
     </div>
+    <ContactUs/>
     </>
   );
 };

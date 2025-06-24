@@ -5,7 +5,7 @@ import resourceImg from '../assets/images/resources.PNG';
 import scoreboardImg from '../assets/images/scoreboard.png';
 import smartUploadImg from '../assets/images/smartUpload.PNG';
 import Navbar from '../component/Navbar';
-
+import ContactUs from '../component/ContactUs';
 
 function Home() {
   const navigate = useNavigate();
@@ -80,7 +80,7 @@ function Home() {
       <footer>
         <p>© 2025 NotesMittar | Made with ❤️ by Students | Tere Exams Ka Sacha Yaar</p>
       </footer>
-
+    <ContactUs/>
     </>
   );
 }
