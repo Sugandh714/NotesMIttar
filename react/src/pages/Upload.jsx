@@ -44,11 +44,32 @@ const Upload = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Form submitted:', formData, file);
-    // Upload logic will go here
-  };
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  const formDataObj = new FormData();
+
+  for (const key in formData) {
+    if (key === 'unit') {
+      formData[key].forEach((u) => formDataObj.append('unit', u));
+    } else {
+      formDataObj.append(key, formData[key]);
+    }
+  }
+  formDataObj.append('pdf', file);
+
+  try {
+    const res = await fetch('http://localhost:5000/api/upload', {
+      method: 'POST',
+      body: formDataObj
+    });
+
+    const data = await res.json();
+    alert(data.message);
+  } catch (err) {
+    alert('Upload failed: ' + err.message);
+  }
+};
+
 
   return (
     <>
