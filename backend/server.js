@@ -1,175 +1,128 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const multer = require('multer');
-const path = require('path');
+const Resource = require('./models/resource');
+const User = require('./models/user');
 const cors = require('cors');
-require('dotenv').config();
-
 const app = express();
-const PORT = process.env.PORT || 5000;
+app.use(cors({
+  origin: 'http://localhost:5173', // ✅ your React app URL
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 
-// Middleware
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
-app.use(express.json());
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGO_URI, {
+app.use(bodyParser.json());
+
+mongoose.connect('mongodb://localhost:27017/notesmittarDB', {
   useNewUrlParser: true,
   useUnifiedTopology: true
-})
-.then(() => console.log('✅ MongoDB Connected'))
-.catch(err => console.error('❌ MongoDB Error:', err));
-
-// Mongoose User Schema
-const userSchema = new mongoose.Schema({
-  name: String,
-  email: { type: String, unique: true },
-  password: String
+}).then(() => {
+  console.log('✅ MongoDB connected');
+}).catch(err => {
+  console.error('❌ MongoDB connection error:', err);
 });
-const User = mongoose.model('User', userSchema);
 
-// Setup multer storage for PDFs
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
-});
-const upload = multer({ storage });
 
-// Register Route
-app.post('/api/register', async (req, res) => {
-  const { name, email, password } = req.body;
+
+app.post('/signup', async (req, res) => {
+  const { name, username, email, password } = req.body;
+
   try {
-    const exists = await User.findOne({ email });
-    if (exists) return res.status(400).json({ message: 'User already exists' });
+    // Check if username already exists
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username already taken' });
+    }
 
-    const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hashed });
-    res.status(201).json({ message: 'User created', userId: user._id });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create new user
+    const newUser = await User.create({
+      name,
+      username,
+      email,
+      password: hashedPassword
+    });
+
+    res.status(201).json({ message: 'Signup successful', user: newUser.username });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ error: 'Signup failed' });
   }
 });
-
-// Login Route
-app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
+//login route
+app.post('/login', async (req, res) => {
+  const { usernameOrEmail, password } = req.body;
 
   try {
-    // Try finding user by either email or name
     const user = await User.findOne({
-      $or: [{ email: email }, { name: email }] // 👈 login with username or email
+      $or: [
+        { username: usernameOrEmail },
+        { email: usernameOrEmail }
+      ]
     });
 
-    if (!user) return res.status(400).json({ message: 'Invalid email/username or password' });
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(400).json({ message: 'Invalid email/username or password' });
-
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET || 'secret123', { expiresIn: '1h' });
-    res.json({ message: 'Login successful', token });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Resource schema
-const resourceSchema = new mongoose.Schema({
-  title: String,
-  fileUrl: String,
-  type: String,
-  semester: String,
-  course: String,
-  subject: String,
-  unit: [String],
-  year: String,
-  uploadedBy: String,
-  status: { type: String, enum: ['approved', 'pending'], default: 'approved' },
-  uploadedAt: { type: Date, default: Date.now }
-});
-const Resource = mongoose.model('Resource', resourceSchema);
-const authenticate = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ message: 'No token provided' });
-
-  const token = authHeader.split(' ')[1];
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
-    const user = await User.findById(decoded.userId);
-    if (!user) return res.status(401).json({ message: 'Invalid token' });
-
-    req.user = user; // Attach user info to the request
-    next();
-  } catch (err) {
-    res.status(401).json({ message: 'Invalid or expired token' });
-  }
-};
-
-// Upload route
-app.post('/api/upload', authenticate, upload.single('pdf'), async (req, res) => {
-  try {
-    const {
-      type,
-      semester,
-      course,
-      subject,
-      unit,
-      year
-    } = req.body;
-
-    const file = req.file;
-    if (!file) return res.status(400).json({ message: 'No PDF uploaded' });
-
-    const unitArray = Array.isArray(unit) ? unit : [unit];
-
-    const existingCount = await Resource.countDocuments({
-      course,
-      semester,
-      subject,
-      unit: { $in: unitArray },
-      status: 'approved'
-    });
-
-    const resource = new Resource({
-      title: file.originalname,
-      fileUrl: `/uploads/${file.filename}`,
-      type,
-      semester,
-      course,
-      subject,
-      unit: unitArray,
-      year,
-      uploadedBy: req.user.name, // 👈 Use name from logged-in user
-      status: existingCount >= 2 ? 'pending' : 'approved'
-    });
-
-    await resource.save();
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
     res.status(200).json({
-      message: resource.status === 'approved'
-        ? 'Upload successful!'
-        : 'Upload pending admin approval.',
-      status: resource.status
+      message: 'Login successful',
+      user: {
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        uploadCount: user.uploadCount
+      }
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Server error during login' });
+  }
+});
+
+
+
+// Upload Route
+app.post('/upload', async (req, res) => {
+  const {
+    filename, course, semester, subject, unit,
+    year, status, uploadedBy, email
+  } = req.body;
+
+  try {
+    const newResource = await Resource.create({
+      filename, course, semester, subject, unit,
+      year, status, uploadedBy
     });
 
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    if (status === 'approved') {
+      await User.findOneAndUpdate(
+        { email },
+        {
+          $setOnInsert: { name: uploadedBy, registeredAt: new Date() },
+          $inc: { uploadCount: 1 }
+        },
+        { upsert: true, new: true }
+      );
+    }
+
+    res.status(201).json({ message: '✅ Resource uploaded', resource: newResource });
+  } catch (error) {
+    console.error('Upload failed:', error);
+    res.status(500).json({ error: '❌ Upload failed' });
   }
 });
-app.get('/api/my-resources', authenticate, async (req, res) => {
-  try {
-    const userName = req.user.name;
-    const resources = await Resource.find({ uploadedBy: userName }).sort({ uploadedAt: -1 });
-    res.json(resources);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+
+const PORT = 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
-
-
-
-// Serve static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

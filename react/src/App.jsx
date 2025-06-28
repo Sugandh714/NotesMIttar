@@ -16,20 +16,24 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
-        <Route path="/Resources" element={<Resources />} />
+        <Route path="/Resources" element={<ProtectedRoute>
+          <Resources />
+        </ProtectedRoute>} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path ="/Scoreboard" element ={<Scoreboard/>} />
-        <Route path ="/Contributor/:name" element ={<Contributor/>}/>     
+        <Route path="/Scoreboard" element={<ProtectedRoute>
+          <Scoreboard />
+        </ProtectedRoute>} />
+        <Route path="/Contributor/:name" element={<Contributor />} />
         <Route
-    path="/upload"
-    element={
-      <ProtectedRoute>
-        <Upload />
-      </ProtectedRoute>
-    }
-  />
-     </Routes>
+          path="/upload"
+          element={
+            <ProtectedRoute>
+              <Upload />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
     </div>
   );
 }
