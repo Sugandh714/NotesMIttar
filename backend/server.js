@@ -26,7 +26,7 @@ mongoose.connect('mongodb://localhost:27017/notesmittarDB', {
 
 
 
-app.post('/signup', async (req, res) => {
+app.post('/api/signup', async (req, res) => {
   const { name, username, email, password } = req.body;
 
   try {
@@ -54,7 +54,7 @@ app.post('/signup', async (req, res) => {
   }
 });
 //login route
-app.post('/login', async (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { usernameOrEmail, password } = req.body;
 
   try {
@@ -92,7 +92,7 @@ app.post('/login', async (req, res) => {
 
 
 // Upload Route
-app.post('/upload', async (req, res) => {
+app.post('/api/upload', async (req, res) => {
   const {
     filename, course, semester, subject, unit,
     year, status, uploadedBy, email

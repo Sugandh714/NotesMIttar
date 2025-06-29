@@ -6,7 +6,7 @@ import '../style/Auth.css'; // Shared CSS for login/signup
 import Navbar from '../component/Navbar';
 
 function Login() {
-  const BASE_URL = 'http://localhost:5000';
+  const BASE_URL = 'http://localhost:5000/api';
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();

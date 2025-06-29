@@ -4,7 +4,7 @@ import '../style/Auth.css';
 import Navbar from '../component/Navbar';
 
 function Signup() {
-  const BASE_URL = 'http://localhost:5000';
+  const BASE_URL = 'http://localhost:5000/api';
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
