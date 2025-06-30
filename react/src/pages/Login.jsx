@@ -29,7 +29,7 @@ function Login() {
     const data = await res.json();
 
     if (res.ok) {
-      alert('Login successful!');
+
       sessionStorage.setItem('loggedIn', 'true');
       sessionStorage.setItem('username', data.user.username);
       sessionStorage.setItem('name', data.user.name);
