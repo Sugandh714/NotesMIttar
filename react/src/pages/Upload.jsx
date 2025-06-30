@@ -19,37 +19,38 @@ const Upload = () => {
 
   const courseOptions = ['CSE', 'AIML', 'ECE', 'EEE', 'ME', 'IT']; // Add more as needed
   const subjectsBySemester = {
-  "Sem 1": [
-    "Probability and Statistics",
-    "EVS",
-    "IT Workshop",
-    "Programming with Python",
-    "Communication Skills"
-  ],
-  "Sem 2": [
-    "Applied Maths",
-    "Applied Physics",
-    "Introduction to DS",
-    "Data Structures",
-    "OOPS"
-  ],
-  "Sem 3": [
-    "Discrete Structures",
-    "DBMS",
-    "AI",
-    "Software Engineering",
-    "MSE",
-    "Numerical Method"
-  ],
-  "Sem 4": [
-    "Disaster Management",
-    "Computer Networks",
-    "Operation Management",
-    "Design and Analysis of Algorithm",
-    "Operating System",
-    "Machine Learning"
-  ]
-};
+    "Sem 1": [
+      "Probability and Statistics",
+      "EVS",
+      "IT Workshop",
+      "Programming with Python",
+      "Communication Skills"
+    ],
+    "Sem 2": [
+      "Applied Maths",
+      "Applied Physics",
+      "Introduction to DS",
+      "Data Structures",
+      "OOPS"
+    ],
+    "Sem 3": [
+      "Discrete Structures",
+      "DBMS",
+      "AI",
+      "Software Engineering",
+      "MSE",
+      "Numerical Method"
+    ],
+    "Sem 4": [
+      "Disaster Management",
+      "Computer Networks",
+      "Operation Management",
+      "Design and Analysis of Algorithm",
+      "Operating System",
+      "Machine Learning"
+    ]
+  };
+
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -76,50 +77,76 @@ const Upload = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
-  const token = sessionStorage.getItem('token');
-
-  const formDataObj = new FormData();
-
-  for (const key in formData) {
-    if (key === 'unit') {
-      formData[key].forEach((u) => formDataObj.append('unit', u));
-    } else {
-      formDataObj.append(key, formData[key]);
-    }
+  
+  if (!file) {
+    alert('Please select a file first');
+    return;
   }
 
-  formDataObj.append('pdf', file);
-
   try {
-    const res = await fetch('http://localhost:5000/api/upload', {
+    const uploadFormData = new FormData();
+    uploadFormData.append('pdf', file); // Note: 'pdf' matches your multer config
+    
+    // Add all the form data
+    uploadFormData.append('course', formData.course);
+    uploadFormData.append('semester', formData.semester);
+    uploadFormData.append('subject', formData.subject);
+    uploadFormData.append('type', formData.type);
+    
+    // Handle unit array
+    if (formData.unit && formData.unit.length > 0) {
+      formData.unit.forEach(unit => {
+        uploadFormData.append('unit', unit);
+      });
+    }
+    
+    // Add year if it's a PYQ
+    if (formData.type === 'PYQs' && formData.year) {
+      uploadFormData.append('year', formData.year);
+    }
+    
+    console.log('Sending request to backend...');
+    
+    const response = await fetch('http://localhost:5000/api/upload', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`
+        // Add user info headers (get these from sessionStorage or your auth system)
+        'username': sessionStorage.getItem('username') || 'testuser',
+        'email': sessionStorage.getItem('email') || 'test@example.com'
       },
-      body: formDataObj
+      body: uploadFormData,
     });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      alert(data.message); // ✅ Show server response (approved or pending)
-      setActiveTab('history'); // ✅ Switch to Contribution History tab
-      setFormData({
-        type: '',
-        semester: '',
-        course: '',
-        subject: '',
-        unit: [],
-        year: '',
-      });
-      setFile(null); // Clear file input
-    } else {
-      alert(data.message || 'Upload failed');
+    
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
-  } catch (err) {
-    alert('Upload failed: ' + err.message);
+    
+    const result = await response.json();
+    console.log('Success response:', result);
+    
+    // Show success message
+    alert(result.message || 'Upload successful!');
+    
+    // Reset form
+    setFormData({
+      type: '',
+      semester: '',
+      course: '',
+      subject: '',
+      unit: [],
+      year: '',
+    });
+    setFile(null);
+    
+  } catch (error) {
+    console.error('Detailed error:', error);
+    alert(`Upload failed: ${error.message}`);
   }
 };
 
@@ -127,145 +154,155 @@ const Upload = () => {
 
   return (
     <>
-    <Navbar/>
-    <div className={`upload-container ${activeTab === 'history' ? 'full-width' : ''}`}>
+      <Navbar />
+      <div className={`upload-container ${activeTab === 'history' ? 'full-width' : ''}`}>
 
-      <div className="upload-tabs">
-        <button
-          className={activeTab === 'upload' ? 'active' : ''}
-          onClick={() => setActiveTab('upload')}
-        >
-          Upload Resource
-        </button>
-        <button
-          className={activeTab === 'history' ? 'active' : ''}
-          onClick={() => setActiveTab('history')}
-        >
-          Contribution History
-        </button>
-      </div>
-
-      {activeTab === 'upload' && (
-        <form className="upload-form" onSubmit={handleSubmit}>
-          <div
-            className="drag-drop-area"
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
+        <div className="upload-tabs">
+          <button
+            className={activeTab === 'upload' ? 'active' : ''}
+            onClick={() => setActiveTab('upload')}
           >
-            {file ? (
-              <p>📄 {file.name}</p>
+            Upload Resource
+          </button>
+          <button
+            className={activeTab === 'history' ? 'active' : ''}
+            onClick={() => setActiveTab('history')}
+          >
+            Contribution History
+          </button>
+        </div>
+
+        {activeTab === 'upload' && (
+          <form className="upload-form" onSubmit={handleSubmit}>
+            <div
+              className="drag-drop-area"
+              onClick={() => document.getElementById('fileInput').click()}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            >
+              {file ? (
+                <p>📄 {file.name}</p>
+              ) : (
+                <p>📂 Drag and drop your file here <br /> or <strong>select pdf from computer</strong></p>
+              )}
+            </div>
+
+            <input
+              type="file"
+              id="fileInput"
+              accept=".pdf"
+              style={{ display: 'none' }}
+              onChange={(e) => setFile(e.target.files[0])}
+            />
+
+
+            <label>
+              Resource Type:
+              <select name="type" value={formData.type} onChange={handleChange} required>
+                <option value="">Select</option>
+                <option value="Notes">Notes</option>
+                <option value="PYQs">PYQs</option>
+                <option value="Books">Books</option>
+              </select>
+            </label>
+
+            <label>
+              Semester:
+              <select name="semester" value={formData.semester} onChange={handleChange} required>
+                <option value="">Select</option>
+                {[...Array(8)].map((_, i) => (
+                  <option key={i} value={`Sem ${i + 1}`}>{`Sem ${i + 1}`}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Course:
+              <select name="course" value={formData.course} onChange={handleChange} required>
+                <option value="">Select</option>
+                {courseOptions.map((course) => (
+                  <option key={course} value={course}>{course}</option>
+                ))}
+              </select>
+            </label>
+            {formData.course === "AIML" && subjectsBySemester[formData.semester] ? (
+              <label>
+                Subject:
+                <select name="subject" value={formData.subject} onChange={handleChange} required>
+                  <option value="">Select Subject</option>
+                  {subjectsBySemester[formData.semester].map((subj) => (
+                    <option key={subj} value={subj}>{subj}</option>
+                  ))}
+                </select>
+              </label>
             ) : (
-              <p>📂 Drag and drop your file here</p>
+              <label>
+                Subject:
+                <input
+                  type="text"
+                  name="subject"
+                  placeholder="Enter subject"
+                  value={formData.subject}
+                  onChange={handleChange}
+                  required
+                />
+              </label>
             )}
-          </div>
-
-          <label>
-            Resource Type:
-            <select name="type" value={formData.type} onChange={handleChange} required>
-              <option value="">Select</option>
-              <option value="Notes">Notes</option>
-              <option value="PYQs">PYQs</option>
-              <option value="Books">Books</option>
-            </select>
-          </label>
-
-          <label>
-            Semester:
-            <select name="semester" value={formData.semester} onChange={handleChange} required>
-              <option value="">Select</option>
-              {[...Array(8)].map((_, i) => (
-                <option key={i} value={`Sem ${i + 1}`}>{`Sem ${i + 1}`}</option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Course:
-            <select name="course" value={formData.course} onChange={handleChange} required>
-              <option value="">Select</option>
-              {courseOptions.map((course) => (
-                <option key={course} value={course}>{course}</option>
-              ))}
-            </select>
-          </label>
-          {formData.course === "AIML" && subjectsBySemester[formData.semester] ? (
-  <label>
-    Subject:
-    <select name="subject" value={formData.subject} onChange={handleChange} required>
-      <option value="">Select Subject</option>
-      {subjectsBySemester[formData.semester].map((subj) => (
-        <option key={subj} value={subj}>{subj}</option>
-      ))}
-    </select>
-  </label>
-) : (
-  <label>
-    Subject:
-    <input
-      type="text"
-      name="subject"
-      placeholder="Enter subject"
-      value={formData.subject}
-      onChange={handleChange}
-      required
-    />
-  </label>
-)}
 
 
 
-{formData.type === 'Notes' && (
-  <div className="unit-checkboxes">
-    <label>Select Units:</label>
-    <div className="unit-options">
-      {[1, 2, 3, 4].map((num) => (
-        <label key={num} className="checkbox-label">
-          <input
-            type="checkbox"
-            value={num}
-            checked={formData.unit.includes(num.toString())}
-            onChange={(e) => {
-              const value = e.target.value;
-              setFormData((prev) => ({
-                ...prev,
-                unit: prev.unit.includes(value)
-                  ? prev.unit.filter((u) => u !== value)
-                  : [...prev.unit, value],
-              }));
-            }}
-          />
-          Unit {num}
-        </label>
-      ))}
-    </div>
-  </div>
-)}
+            {formData.type === 'Notes' && (
+              <div className="unit-checkboxes">
+                <label>Select Units:</label>
+                <div className="unit-options">
+                  {[1, 2, 3, 4].map((num) => (
+                    <label key={num} className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        value={num}
+                        checked={formData.unit.includes(num.toString())}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setFormData((prev) => ({
+                            ...prev,
+                            unit: prev.unit.includes(value)
+                              ? prev.unit.filter((u) => u !== value)
+                              : [...prev.unit, value],
+                          }));
+                        }}
+                      />
+                      Unit {num}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
 
-{formData.type === 'PYQs' && (
-  <label>
-    Year of PYQ:
-    <input
-      type="number"
-      name="year"
-      min="2000"
-      max={new Date().getFullYear()}
-      placeholder="e.g. 2023"
-      value={formData.year || ''}
-      onChange={handleChange}
-      required
-    />
-  </label>
-)}
+            {formData.type === 'PYQs' && (
+              <label>
+                Year of PYQ:
+                <input
+                  type="number"
+                  name="year"
+                  min="2000"
+                  max={new Date().getFullYear()}
+                  placeholder="e.g. 2023"
+                  value={formData.year || ''}
+                  onChange={handleChange}
+                  required
+                />
+              </label>
+            )}
 
 
-          <button type="submit">Upload</button>
-        </form>
-      )}
+            <button type="submit">Upload</button>
+          </form>
+        )}
 
-      {activeTab === 'history' && <ContributionHistory/>}
-    </div>
-    <ContactUs/>
+        {activeTab === 'history' && <ContributionHistory />}
+      </div>
+      <ContactUs />
     </>
   );
 };
