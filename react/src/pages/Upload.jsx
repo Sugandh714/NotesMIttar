@@ -108,16 +108,23 @@ const handleSubmit = async (e) => {
     }
     
     console.log('Sending request to backend...');
-    
+    const username = sessionStorage.getItem('username');
+    const email = sessionStorage.getItem('email');
+
+if (!username || !email) {
+  alert("Please log in before uploading.");
+  return;
+}
+
     const response = await fetch('http://localhost:5000/api/upload', {
-      method: 'POST',
-      headers: {
-        // Add user info headers (get these from sessionStorage or your auth system)
-        'username': sessionStorage.getItem('username') || 'testuser',
-        'email': sessionStorage.getItem('email') || 'test@example.com'
-      },
-      body: uploadFormData,
-    });
+  method: 'POST',
+  headers: {
+    'username': username,
+    'email': email
+  },
+  body: uploadFormData,
+});
+
     
     console.log('Response status:', response.status);
     console.log('Response ok:', response.ok);
@@ -147,6 +154,17 @@ const handleSubmit = async (e) => {
   } catch (error) {
     console.error('Detailed error:', error);
     alert(`Upload failed: ${error.message}`);
+
+     // Reset the form if multer error
+  setFormData({
+    type: '',
+    semester: '',
+    course: '',
+    subject: '',
+    unit: [],
+    year: '',
+  });
+  setFile(null);
   }
 };
 

@@ -73,8 +73,6 @@ app.use(cors({
 
 app.use(bodyParser.json());
 
-
-// Helper function to upload to GridFS
 // Helper function to upload to GridFS
 const uploadToGridFS = (fileBuffer, filename, metadata) => {
   return new Promise((resolve, reject) => {
@@ -116,7 +114,6 @@ app.get('/api/health', (req, res) => {
     gridfs: isGridFSReady ? 'Ready' : 'Not Ready'
   });
 });
-
 
 // Signup route
 app.post('/api/signup', async (req, res) => {
@@ -165,141 +162,183 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    res.status(200).json({
-      message: 'Login successful',
-      user: {
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        uploadCount: user.uploadCount
-      }
-    });
+   res.status(200).json({
+  message: 'Login successful',
+  user: {
+    _id: user._id,
+    name: user.name,
+    username: user.username,
+    email: user.email,
+    uploadCount: user.uploadCount
+  }
+});
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server error during login' });
   }
 });
 
-// Upload Route
-// Upload Route
-app.post('/api/upload', upload.single('pdf'), async (req, res) => {
-  console.log('Upload request received');
-  console.log('Headers:', req.headers);
-  console.log('Body:', req.body);
-  console.log('File:', req.file ? req.file.originalname : 'No file');
-
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+// Upload Route with proper error handling
+app.post('/api/upload', (req, res) => {
+  // Use multer middleware with error handling
+  upload.single('pdf')(req, res, async (err) => {
+    // Handle multer errors
+    if (err) {
+      console.error('Multer error:', err);
+      
+      if (err instanceof multer.MulterError) {
+        switch (err.code) {
+          case 'LIMIT_FILE_SIZE':
+            return res.status(400).json({ 
+              error: 'File too large! Please choose a file smaller than 10MB.' 
+            });
+        
+          default:
+            return res.status(400).json({ 
+              error: 'File upload error: ' + err.message 
+            });
+        }
+      } else {
+        // Custom errors (like file type validation)
+        return res.status(400).json({ 
+          error: err.message 
+        });
+      }
     }
 
-    if (!isGridFSReady) {
-      return res.status(503).json({ error: 'GridFS not ready. Please try again in a moment.' });
-    }
+    // Continue with the upload process
+    console.log('Upload request received');
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+    console.log('File:', req.file ? req.file.originalname : 'No file');
 
-    // Extract user info from headers
-    const uploadedBy = req.headers.username || 'unknown';
-    const email = req.headers.email || 'unknown@example.com';
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
 
-    const { course, semester, subject, type, year } = req.body;
-    let { unit } = req.body;
-    
-    // Handle unit array properly
-    if (unit) {
-      if (typeof unit === 'string') {
-        unit = [unit];
-      } else if (Array.isArray(unit)) {
-        // unit is already an array, keep it as is
+      if (!isGridFSReady) {
+        return res.status(503).json({ error: 'GridFS not ready. Please try again in a moment.' });
+      }
+
+      // Extract user info from headers
+      const uploadedBy = req.headers.username || 'unknown';
+      const email = req.headers.email || 'unknown@example.com';
+
+      // Validate that user exists first
+      const existingUser = await User.findOne({
+        $or: [
+          { username: uploadedBy },
+          { email: email }
+        ]
+      });
+
+      if (!existingUser) {
+        return res.status(400).json({ 
+          error: 'User not found. Please login again.' 
+        });
+      }
+
+      const { course, semester, subject, type, year } = req.body;
+      let { unit } = req.body;
+      
+      // Handle unit array properly
+      if (unit) {
+        if (typeof unit === 'string') {
+          unit = [unit];
+        } else if (Array.isArray(unit)) {
+          // unit is already an array, keep it as is
+        } else {
+          unit = [];
+        }
       } else {
         unit = [];
       }
-    } else {
-      unit = [];
+
+      console.log('Processing upload for:', {
+        course,
+        semester,
+        subject,
+        type,
+        uploadedBy: existingUser.username
+      });
+
+      // Create filename
+      const timestamp = Date.now();
+      const unitStr = unit.length > 0 ? unit.join('_') : 'general';
+      const filename = `${course}_${semester}_${subject}_${type}_${unitStr}_${timestamp}${path.extname(req.file.originalname)}`;
+
+      console.log('Generated filename:', filename);
+
+      // Upload to GridFS
+      const gridFSFile = await uploadToGridFS(req.file.buffer, filename, {
+        originalName: req.file.originalname,
+        subject: subject,
+        semester: semester,
+        course: course,
+        type: type,
+        unit: unit,
+        uploadedBy: existingUser.username,
+        uploadDate: new Date()
+      });
+
+      console.log('GridFS upload successful:', gridFSFile._id);
+
+      // Check existing approved resources for this combination
+      const existing = await Resource.countDocuments({
+        course,
+        semester,
+        subject,
+        type,
+        status: 'approved'
+      });
+
+      const status = existing < 2 ? 'approved' : 'pending';
+      console.log(`Existing approved resources: ${existing}, Status: ${status}`);
+
+      // Create resource record
+      const resource = await Resource.create({
+        filename: filename,
+        fileId: gridFSFile._id,
+        course,
+        semester,
+        subject,
+        type,
+        year: year || null,
+        unit: unit,
+        status,
+        uploadedBy: existingUser.username,
+        uploadDate: new Date()
+      });
+
+      console.log('Resource record created:', resource._id);
+
+      // Update user score - FIXED: Update the existing user by their _id
+      const scoreIncrement = status === 'approved' ? 1 : 0.5;
+
+      await User.findByIdAndUpdate(
+        existingUser._id,
+        {
+          $inc: { uploadCount: scoreIncrement }
+        },
+        { new: true }
+      );
+
+      console.log(`✅ Upload completed: ${filename}, Status: ${status}`);
+      console.log(`✅ Updated uploadCount for user: ${existingUser.username}`);
+      
+      res.status(201).json({ 
+        message: `Upload ${status}! Your contribution has been ${status === 'approved' ? 'accepted' : 'submitted for review'}.`,
+        status,
+        filename: filename,
+        fileId: gridFSFile._id
+      });
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      res.status(500).json({ error: 'Upload failed: ' + error.message });
     }
-
-    console.log('Processing upload for:', {
-      course,
-      semester,
-      subject,
-      type,
-      uploadedBy
-    });
-
-    // Create filename
-    const timestamp = Date.now();
-    const unitStr = unit.length > 0 ? unit.join('_') : 'general';
-    const filename = `${course}_${semester}_${subject}_${type}_${unitStr}_${timestamp}${path.extname(req.file.originalname)}`;
-
-    console.log('Generated filename:', filename);
-
-    // Upload to GridFS
-    const gridFSFile = await uploadToGridFS(req.file.buffer, filename, {
-      originalName: req.file.originalname,
-      subject: subject,
-      semester: semester,
-      course: course,
-      type: type,
-      unit: unit,
-      uploadedBy: uploadedBy,
-      uploadDate: new Date()
-    });
-
-    console.log('GridFS upload successful:', gridFSFile._id);
-
-    // Check existing approved resources for this combination
-    const existing = await Resource.countDocuments({
-      course,
-      semester,
-      subject,
-      type,
-      status: 'approved'
-    });
-
-    const status = existing < 2 ? 'approved' : 'pending';
-    console.log(`Existing approved resources: ${existing}, Status: ${status}`);
-
-    // Create resource record
-    const resource = await Resource.create({
-      filename: filename,
-      fileId: gridFSFile._id,
-      course,
-      semester,
-      subject,
-      type,
-      year: year || null,
-      unit: unit,
-      status,
-      uploadedBy,
-      uploadDate: new Date()
-    });
-
-    console.log('Resource record created:', resource._id);
-
-    // Update user score
-    const scoreIncrement = status === 'approved' ? 1 : 0.5;
-
-    await User.findOneAndUpdate(
-      { email },
-      {
-        $setOnInsert: { name: uploadedBy, registeredAt: new Date() },
-        $inc: { uploadCount: scoreIncrement }
-      },
-      { upsert: true, new: true }
-    );
-
-    console.log(`✅ Upload completed: ${filename}, Status: ${status}`);
-    
-    res.status(201).json({ 
-      message: `Upload ${status}! Your contribution has been ${status === 'approved' ? 'accepted' : 'submitted for review'}.`,
-      status,
-      filename: filename,
-      fileId: gridFSFile._id
-    });
-
-  } catch (error) {
-    console.error('Upload error:', error);
-    res.status(500).json({ error: 'Upload failed: ' + error.message });
-  }
+  });
 });
 
 // Fetch Contribution History Route
@@ -387,6 +426,79 @@ app.get('/api/files', async (req, res) => {
   } catch (error) {
     console.error('Files fetch error:', error);
     res.status(500).json({ error: 'Error fetching files' });
+  }
+});
+
+// Leaderboard Route
+app.get('/api/leaderboard', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10; // Default to top 10
+    
+    const leaderboard = await User.find(
+      { uploadCount: { $gt: 0 } }, // Only users with uploads
+      { 
+        name: 1, 
+        username: 1, 
+        uploadCount: 1, 
+        registeredAt: 1,
+        _id: 0 // Don't return _id for privacy
+      }
+    )
+    .sort({ uploadCount: -1, registeredAt: 1 }) // Sort by uploadCount desc, then by registration date
+    .limit(limit);
+
+    // Add rank to each user
+    const rankedLeaderboard = leaderboard.map((user, index) => ({
+      rank: index + 1,
+      name: user.name,
+      username: user.username,
+      uploadCount: user.uploadCount,
+      registeredAt: user.registeredAt
+    }));
+
+    res.json({
+      leaderboard: rankedLeaderboard,
+      totalUsers: leaderboard.length
+    });
+  } catch (error) {
+    console.error('Leaderboard error:', error);
+    res.status(500).json({ error: 'Failed to fetch leaderboard' });
+  }
+});
+
+// Get user's rank
+app.get('/api/my-rank', async (req, res) => {
+  const username = req.headers.username;
+
+  if (!username) {
+    return res.status(400).json({ error: 'Username required in headers' });
+  }
+
+  try {
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Count users with higher uploadCount
+    const rank = await User.countDocuments({
+      uploadCount: { $gt: user.uploadCount }
+    }) + 1;
+
+    // Get total users with uploads
+    const totalUsers = await User.countDocuments({
+      uploadCount: { $gt: 0 }
+    });
+
+    res.json({
+      rank,
+      uploadCount: user.uploadCount,
+      totalUsers,
+      percentile: totalUsers > 0 ? Math.round(((totalUsers - rank + 1) / totalUsers) * 100) : 0
+    });
+  } catch (error) {
+    console.error('Rank fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch rank' });
   }
 });
 

@@ -31,8 +31,11 @@ function Login() {
     if (res.ok) {
 
       sessionStorage.setItem('loggedIn', 'true');
-      sessionStorage.setItem('username', data.user.username);
-      sessionStorage.setItem('name', data.user.name);
+      sessionStorage.setItem('userId', data.user._id);
+sessionStorage.setItem('username', data.user.username);
+sessionStorage.setItem('email', data.user.email);
+sessionStorage.setItem('name', data.user.name);
+
       navigate('/');
     } else {
       alert(data.error || 'Login failed');
