@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
   ChevronLeft, BookOpen, FileText,
-  Calendar, GraduationCap, Download, Search
+  Calendar, GraduationCap, Download, Search, Eye
 } from 'lucide-react';
 import '../style/Resources.css';
 import Navbar from '../component/Navbar';
@@ -55,6 +55,98 @@ function Resources() {
     ]
   };
 
+  // Get user credentials for tracking
+  const getUserCredentials = () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return {
+      username: user.username,
+      email: user.email
+    };
+  };
+
+  // Function to record view
+  const recordView = async (resourceId) => {
+    try {
+      const credentials = getUserCredentials();
+      if (!credentials.username) {
+        console.warn('User not logged in, cannot record view');
+        return;
+      }
+
+      await axios.post(
+        `http://localhost:5000/api/record-view/${resourceId}`,
+        {},
+        {
+          headers: {
+            username: credentials.username,
+            email: credentials.email,
+            'session-id': sessionStorage.getItem('sessionId') || Math.random().toString(36),
+          }
+        }
+      );
+      console.log('View recorded successfully');
+    } catch (error) {
+      console.error('Failed to record view:', error);
+    }
+  };
+
+  // Function to handle view action
+  const handleView = async (resource) => {
+    try {
+      // Record the view first
+      await recordView(resource._id);
+      
+      // Update local state to reflect the view count increase
+      setResources(prevResources => 
+        prevResources.map(r => 
+          r._id === resource._id 
+            ? { ...r, viewCount: (r.viewCount || 0) + 1 }
+            : r
+        )
+      );
+
+      // Open the file in a new tab
+      window.open(resource.fileUrl, '_blank');
+    } catch (error) {
+      console.error('Error handling view:', error);
+      // Still open the file even if tracking fails
+      window.open(resource.fileUrl, '_blank');
+    }
+  };
+
+  // Function to handle download action
+  const handleDownload = async (resource) => {
+    try {
+      // Update local state to reflect the download count increase
+      setResources(prevResources => 
+        prevResources.map(r => 
+          r._id === resource._id 
+            ? { ...r, downloadCount: (r.downloadCount || 0) + 1 }
+            : r
+        )
+      );
+
+      // Create download link with download parameter
+      const downloadUrl = `${resource.fileUrl}?download=true`;
+      
+      // Create a temporary anchor element to trigger download
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${resource.title}.pdf`;
+
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log('Download initiated successfully');
+    } catch (error) {
+      console.error('Error handling download:', error);
+      // Fallback to direct link
+      window.open(`${resource.fileUrl}?download=true`, '_blank');
+    }
+  };
+
   // Fetch resources when we reach stage 5
   useEffect(() => {
     const fetchResources = async () => {
@@ -74,9 +166,7 @@ function Resources() {
           // For now, let's include all years for PYQs
         }
 
-       
         const res = await axios.get(`http://localhost:5000/api/resources?${params.toString()}`);
-   
         setResources(res.data);
 
       } catch (err) {
@@ -201,8 +291,6 @@ function Resources() {
             <span>Back</span>
           </button>
         )}
-
-
 
         <div className="main-content">
           {/* Stage 1: Choose Course */}
@@ -413,17 +501,36 @@ function Resources() {
                           {res.unit && res.unit.length > 0 && (
                             <p className="resource-unit">Unit: {res.unit.join(', ')}</p>
                           )}
+                          
+                          {/* Stats Section */}
+                          <div className="resource-stats">
+                            <div className="stat-item">
+                              <Eye size={16} />
+                              <span>{res.viewCount || 0} views</span>
+                            </div>
+                            <div className="stat-item">
+                              <Download size={16} />
+                              <span>{res.downloadCount || 0} downloads</span>
+                            </div>
+                          </div>
                         </div>
+                        
                         <div className="resource-actions">
-  <a href={res.fileUrl} target="_blank" rel="noopener noreferrer" className="view-btn">
-    View
-  </a>
-  <a href={res.fileUrl} download className="download-btn">
-    Download
-  </a>
-</div>
-
-
+                          <button 
+                            onClick={() => handleView(res)} 
+                            className="view-btn"
+                          >
+                            <Eye size={16} />
+                            View
+                          </button>
+                          <button 
+                            onClick={() => handleDownload(res)} 
+                            className="download-btn"
+                          >
+                            <Download size={16} />
+                            Download
+                          </button>
+                        </div>
                       </div>
                     ))
                   ) : (

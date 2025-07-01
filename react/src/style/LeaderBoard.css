@@ -1,0 +1,147 @@
+/* Global Styles */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f8fb;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.page-title {
+    text-align: center;
+    font-size: 2rem;
+    color: #1d3557;
+    margin-bottom: 20px;
+}
+
+.search-box {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+.user-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.user-card:hover {
+    background-color: #f0f4f8;
+}
+
+.user-info h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #1d3557;
+}
+
+.user-info p {
+    margin: 4px 0;
+    font-size: 14px;
+    color: #555;
+}
+
+.view-link {
+    font-size: 14px;
+    color: #0077cc;
+    text-decoration: underline;
+}
+
+.profile-header h2 {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.profile-header p {
+    margin: 4px 0;
+    color: #555;
+}
+
+.badge {
+    display: inline-block;
+    margin-top: 6px;
+    background-color: #e0f7e0;
+    color: #2e7d32;
+    padding: 6px 10px;
+    border-radius: 16px;
+    font-size: 13px;
+}
+.resource-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.resource-list {
+    list-style: none;
+    padding: 0;
+}
+.download-link {
+  font-size: 14px;
+  color: #0077cc;
+  text-decoration: none;
+  background-color: #e0f0ff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+.download-link:hover {
+  background-color: #cce4ff;
+}
+.resource-item {
+    border: 1px solid #ddd;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.resource-title {
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.resource-details p {
+    margin: 2px 0;
+    font-size: 14px;
+    color: #444;
+}
+
+.resource-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+}
+
+.upvote-button {
+    padding: 6px 12px;
+    font-size: 14px;
+    border: none;
+    background-color: #e0f0ff;
+    color: #0077cc;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.upvote-button:hover {
+    background-color: #cce4ff;
+}
