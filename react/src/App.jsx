@@ -4,11 +4,12 @@ import About from './pages/About';
 import Resources from './pages/Resources';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Scoreboard from './pages/Scoreboard';
-import Contributor from './pages/Contributor';
+import ContributorPage from './pages/ContributorPage';
+
 import Upload from './pages/Upload';
 import { Navigate } from 'react-router-dom';
 import ProtectedRoute from './component/ProtectedRoute';
+import LeaderboardPage from './pages/LeaderboardPage';
 
 function App() {
   return (
@@ -22,9 +23,9 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/Scoreboard" element={<ProtectedRoute>
-          <Scoreboard />
+         <LeaderboardPage  />
         </ProtectedRoute>} />
-        <Route path="/Contributor/:name" element={<Contributor />} />
+         <Route path="/Contributor/:username" element={<ContributorPage />} />
         <Route
           path="/upload"
           element={

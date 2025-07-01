@@ -50,7 +50,7 @@ mongoose.connection.on('error', (err) => {
 
 // Multer setup for memory storage
 const storage = multer.memoryStorage();
-const upload = multer({ 
+const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
     console.log('File received:', file.originalname, file.mimetype);
@@ -109,17 +109,17 @@ const uploadToGridFS = (fileBuffer, filename, metadata) => {
 
 // Helper function to get user IP address
 const getUserIP = (req) => {
-  return req.headers['x-forwarded-for'] || 
-         req.connection.remoteAddress || 
-         req.socket.remoteAddress ||
-         (req.connection.socket ? req.connection.socket.remoteAddress : null);
+  return req.headers['x-forwarded-for'] ||
+    req.connection.remoteAddress ||
+    req.socket.remoteAddress ||
+    (req.connection.socket ? req.connection.socket.remoteAddress : null);
 };
 
 // Helper function to get user from headers
 const getUserFromHeaders = async (req) => {
   const username = req.headers.username;
   if (!username) return null;
-  
+
   try {
     return await User.findOne({ username });
   } catch (error) {
@@ -184,16 +184,16 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-   res.status(200).json({
-  message: 'Login successful',
-  user: {
-    _id: user._id,
-    name: user.name,
-    username: user.username,
-    email: user.email,
-    uploadCount: user.uploadCount
-  }
-});
+    res.status(200).json({
+      message: 'Login successful',
+      user: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        uploadCount: user.uploadCount
+      }
+    });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server error during login' });
@@ -207,23 +207,23 @@ app.post('/api/upload', (req, res) => {
     // Handle multer errors
     if (err) {
       console.error('Multer error:', err);
-      
+
       if (err instanceof multer.MulterError) {
         switch (err.code) {
           case 'LIMIT_FILE_SIZE':
-            return res.status(400).json({ 
-              error: 'File too large! Please choose a file smaller than 10MB.' 
+            return res.status(400).json({
+              error: 'File too large! Please choose a file smaller than 10MB.'
             });
-        
+
           default:
-            return res.status(400).json({ 
-              error: 'File upload error: ' + err.message 
+            return res.status(400).json({
+              error: 'File upload error: ' + err.message
             });
         }
       } else {
         // Custom errors (like file type validation)
-        return res.status(400).json({ 
-          error: err.message 
+        return res.status(400).json({
+          error: err.message
         });
       }
     }
@@ -256,14 +256,14 @@ app.post('/api/upload', (req, res) => {
       });
 
       if (!existingUser) {
-        return res.status(400).json({ 
-          error: 'User not found. Please login again.' 
+        return res.status(400).json({
+          error: 'User not found. Please login again.'
         });
       }
 
       const { course, semester, subject, type, year } = req.body;
       let { unit } = req.body;
-      
+
       // 🚫 Reject if PYQ for the same year already exists
       if (type.toLowerCase() === 'pyqs' && year) {
         const duplicatePYQ = await Resource.findOne({
@@ -366,8 +366,8 @@ app.post('/api/upload', (req, res) => {
 
       console.log(`✅ Upload completed: ${filename}, Status: ${status}`);
       console.log(`✅ Updated uploadCount for user: ${existingUser.username}`);
-      
-      res.status(201).json({ 
+
+      res.status(201).json({
         message: `Upload ${status}! Your contribution has been ${status === 'approved' ? 'accepted' : 'submitted for review'}.`,
         status,
         filename: filename,
@@ -394,7 +394,7 @@ app.get('/api/my-resources', async (req, res) => {
   try {
     const resources = await Resource.find({ uploadedBy: username }).sort({ uploadDate: -1 });
     console.log(`Found ${resources.length} resources for user ${username}`);
-    
+
     const enriched = resources.map(doc => ({
       filename: doc.filename,
       course: doc.course,
@@ -420,7 +420,7 @@ app.post('/api/record-view/:resourceId', async (req, res) => {
   try {
     const { resourceId } = req.params;
     const user = await getUserFromHeaders(req);
-    
+
     if (!user) {
       return res.status(401).json({ error: 'User authentication required' });
     }
@@ -442,15 +442,15 @@ app.post('/api/record-view/:resourceId', async (req, res) => {
     };
 
     const view = await ResourceView.recordView(viewData);
-    
+
     if (view) {
       // Increment view count in Resource model
       await Resource.findByIdAndUpdate(
-        resourceId, 
+        resourceId,
         { $inc: { viewCount: 1 } },
         { new: true }
       );
-      
+
       console.log(`✅ View recorded for resource ${resourceId} by user ${user.username}`);
       res.json({ success: true, message: 'View recorded' });
     } else {
@@ -468,12 +468,12 @@ app.get('/api/file/:id', async (req, res) => {
   try {
     const fileId = new mongoose.Types.ObjectId(req.params.id);
     const isDownload = req.query.download === 'true';
-    
+
     console.log('Requesting file:', fileId, 'Download:', isDownload);
-    
+
     // Get file info first
     const files = await gridfsBucket.find({ _id: fileId }).toArray();
-    
+
     if (!files || files.length === 0) {
       console.log('File not found:', fileId);
       return res.status(404).json({ error: 'File not found' });
@@ -481,10 +481,10 @@ app.get('/api/file/:id', async (req, res) => {
 
     const file = files[0];
     console.log('File found:', file.filename);
-    
+
     // Find the resource record
     const resource = await Resource.findOne({ fileId: fileId });
-    
+
     if (resource && isDownload) {
       // Increment download count
       await Resource.findByIdAndUpdate(
@@ -494,23 +494,31 @@ app.get('/api/file/:id', async (req, res) => {
       );
       console.log(`✅ Download count incremented for resource ${resource._id}`);
     }
-    
-    // Set headers based on whether it's a download or view
-    if (isDownload) {
-      res.set({
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${file.metadata?.originalName || file.filename}"`
-      });
-    } else {
-      res.set({
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="${file.metadata?.originalName || file.filename}"`
-      });
+
+    // Construct custom filename based on metadata
+    let safeFilename = file.filename;
+    if (file.metadata) {
+      const { course, semester, subject, type, unit } = file.metadata;
+      const titleParts = [course, semester, subject, type, ...(unit || [])];
+      safeFilename = titleParts
+        .filter(Boolean)
+        .join(' ')
+        .replace(/_/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
     }
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': isDownload
+        ? `attachment; filename="${safeFilename}.pdf"`
+        : `inline; filename="${safeFilename}.pdf"`
+    });
+
 
     // Create download stream
     const downloadStream = gridfsBucket.openDownloadStream(fileId);
-    
+
     downloadStream.on('error', (error) => {
       console.error('Download error:', error);
       res.status(500).json({ error: 'Error downloading file' });
@@ -529,7 +537,7 @@ app.get('/api/files', async (req, res) => {
     if (!isGridFSReady) {
       return res.status(503).json({ error: 'GridFS not ready' });
     }
-    
+
     const files = await gridfsBucket.find().toArray();
     console.log(`Found ${files.length} files in GridFS`);
     res.json(files);
@@ -539,42 +547,94 @@ app.get('/api/files', async (req, res) => {
   }
 });
 
-// Leaderboard Route
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 10; // Default to top 10
-    
-    const leaderboard = await User.find(
-      { uploadCount: { $gt: 0 } }, // Only users with uploads
-      { 
-        name: 1, 
-        username: 1, 
-        uploadCount: 1, 
-        registeredAt: 1,
-        _id: 0 // Don't return _id for privacy
+    const leaderboard = await Resource.aggregate([
+      { $match: { status: 'approved' } }, // ✅ Only approved resources
+
+      {
+        $group: {
+          _id: '$uploadedBy', // ✅ group by username
+          totalUploads: { $sum: 1 },
+          totalUpvotes: { $sum: '$upvotes' },
+          avgRelevanceScore: { $avg: '$relevanceScore' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',          // username from Resource
+          foreignField: 'username',   // username in User
+          as: 'user'
+        }
+      },
+      { $unwind: '$user' },
+      {
+        $project: {
+          uploaderId: '$user._id',
+          username: '$user.username',
+          name: '$user.name',
+          branch: '$user.branch',
+          totalUploads: 1,
+          totalUpvotes: 1,
+          avgRelevanceScore: { $round: ['$avgRelevanceScore', 2] },
+          badge: {
+            $switch: {
+              branches: [
+                { case: { $gte: ['$totalUploads', 50] }, then: 'Gold' },
+                { case: { $gte: ['$totalUploads', 20] }, then: 'Silver' },
+                { case: { $gte: ['$totalUploads', 5] }, then: 'Bronze' }
+              ],
+              default: 'Newbie'
+            }
+          }
+        }
+      },
+      {
+        $sort: { totalUploads: -1 }
       }
-    )
-    .sort({ uploadCount: -1, registeredAt: 1 }) // Sort by uploadCount desc, then by registration date
-    .limit(limit);
+    ]);
 
-    // Add rank to each user
-    const rankedLeaderboard = leaderboard.map((user, index) => ({
-      rank: index + 1,
-      name: user.name,
-      username: user.username,
-      uploadCount: user.uploadCount,
-      registeredAt: user.registeredAt
-    }));
-
-    res.json({
-      leaderboard: rankedLeaderboard,
-      totalUsers: leaderboard.length
-    });
-  } catch (error) {
-    console.error('Leaderboard error:', error);
+    res.status(200).json(leaderboard);
+  } catch (err) {
+    console.error('❌ Leaderboard fetch error:', err);
     res.status(500).json({ error: 'Failed to fetch leaderboard' });
   }
 });
+app.get('/api/contributor/:username/resources', async (req, res) => {
+  const { username } = req.params;
+  try {
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const resources = await Resource.find({
+      uploadedBy: username,
+      status: 'approved'
+    });
+
+    res.json({
+      contributor: {
+        name: user.name,
+        username: user.username,
+        branch: user.branch,
+        totalUploads: user.uploadCount,
+        badge:
+          user.uploadCount >= 50
+            ? 'Gold'
+            : user.uploadCount >= 20
+              ? 'Silver'
+              : user.uploadCount >= 5
+                ? 'Bronze'
+                : 'Newbie'
+      },
+      resources
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error fetching contributor info.' });
+  }
+});
+
 
 // Get user's rank
 app.get('/api/my-rank', async (req, res) => {
@@ -645,17 +705,26 @@ app.get('/api/resources', async (req, res) => {
         // Get view count from ResourceView collection
         const viewCount = await ResourceView.getViewCountByResource(doc._id);
         function toTitleCase(str) {
-  return str
-    .split(' ')
-    .map(word => word[0]?.toUpperCase() + word.slice(1)?.toLowerCase())
-    .join(' ');
-}
+          return str
+            .split(' ')
+            .map(word => word[0]?.toUpperCase() + word.slice(1)?.toLowerCase())
+            .join(' ');
+        }
 
         return {
           _id: doc._id,
-         title: toTitleCase(`${doc.course} ${doc.semester} ${doc.subject} ${doc.type} ${doc.unit?.join(' ') || ''}`.trim()),
+          originalName,
+          title: toTitleCase([
+            doc.course,
+            doc.semester,
+            doc.subject,
+            doc.type,
+            ...(doc.type?.toLowerCase() === 'pyq' && doc.year ? [doc.year] : []),
+            ...(Array.isArray(doc.unit) ? doc.unit : [])
+          ].filter(Boolean).join(' ')),
 
-            // ✅ Now sent to frontend
+
+          // ✅ Now sent to frontend
           filename: doc.filename,      // fallback
           author: doc.uploadedBy,
           year: doc.year,
