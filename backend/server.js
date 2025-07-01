@@ -241,7 +241,24 @@ app.post('/api/upload', (req, res) => {
 
       const { course, semester, subject, type, year } = req.body;
       let { unit } = req.body;
-      
+      // 🚫 Reject if PYQ for the same year already exists
+if (type.toLowerCase() === 'pyqs' && year) {
+  const duplicatePYQ = await Resource.findOne({
+    type: 'PYQs',
+    year,
+    course,
+    semester,
+    subject
+  });
+
+  if (duplicatePYQ) {
+    return res.status(409).json({
+      error: `❌ A PYQ for year ${year} already exists for this subject.`,
+      conflict: true
+    });
+  }
+}
+
       // Handle unit array properly
       if (unit) {
         if (typeof unit === 'string') {
@@ -262,6 +279,10 @@ app.post('/api/upload', (req, res) => {
         type,
         uploadedBy: existingUser.username
       });
+      // 🚫 Reject if PYQ for the same year already exists
+
+
+
 
       // Create filename
       const timestamp = Date.now();
