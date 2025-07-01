@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const bcrypt = require('bcryptjs');
 const Resource = require('./models/resource');
 const User = require('./models/user');
+const ResourceView = require('./models/Resource_Views'); // Add this import
 const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
@@ -104,6 +105,27 @@ const uploadToGridFS = (fileBuffer, filename, metadata) => {
     // Handle the upload
     uploadStream.end(fileBuffer);
   });
+};
+
+// Helper function to get user IP address
+const getUserIP = (req) => {
+  return req.headers['x-forwarded-for'] || 
+         req.connection.remoteAddress || 
+         req.socket.remoteAddress ||
+         (req.connection.socket ? req.connection.socket.remoteAddress : null);
+};
+
+// Helper function to get user from headers
+const getUserFromHeaders = async (req) => {
+  const username = req.headers.username;
+  if (!username) return null;
+  
+  try {
+    return await User.findOne({ username });
+  } catch (error) {
+    console.error('Error finding user:', error);
+    return null;
+  }
 };
 
 // Health check route
@@ -241,23 +263,24 @@ app.post('/api/upload', (req, res) => {
 
       const { course, semester, subject, type, year } = req.body;
       let { unit } = req.body;
+      
       // 🚫 Reject if PYQ for the same year already exists
-if (type.toLowerCase() === 'pyqs' && year) {
-  const duplicatePYQ = await Resource.findOne({
-    type: 'PYQs',
-    year,
-    course,
-    semester,
-    subject
-  });
+      if (type.toLowerCase() === 'pyqs' && year) {
+        const duplicatePYQ = await Resource.findOne({
+          type: 'PYQs',
+          year,
+          course,
+          semester,
+          subject
+        });
 
-  if (duplicatePYQ) {
-    return res.status(409).json({
-      error: `❌ A PYQ for year ${year} already exists for this subject.`,
-      conflict: true
-    });
-  }
-}
+        if (duplicatePYQ) {
+          return res.status(409).json({
+            error: `❌ A PYQ for year ${year} already exists for this subject.`,
+            conflict: true
+          });
+        }
+      }
 
       // Handle unit array properly
       if (unit) {
@@ -279,10 +302,6 @@ if (type.toLowerCase() === 'pyqs' && year) {
         type,
         uploadedBy: existingUser.username
       });
-      // 🚫 Reject if PYQ for the same year already exists
-
-
-
 
       // Create filename
       const timestamp = Date.now();
@@ -396,11 +415,61 @@ app.get('/api/my-resources', async (req, res) => {
   }
 });
 
-// Route to download/view files
+// NEW: Record view endpoint
+app.post('/api/record-view/:resourceId', async (req, res) => {
+  try {
+    const { resourceId } = req.params;
+    const user = await getUserFromHeaders(req);
+    
+    if (!user) {
+      return res.status(401).json({ error: 'User authentication required' });
+    }
+
+    // Check if resource exists
+    const resource = await Resource.findById(resourceId);
+    if (!resource) {
+      return res.status(404).json({ error: 'Resource not found' });
+    }
+
+    // Record the view
+    const viewData = {
+      userId: user._id,
+      resourceId: new mongoose.Types.ObjectId(resourceId),
+      ipAddress: getUserIP(req),
+      userAgent: req.headers['user-agent'],
+      sessionId: req.headers['session-id'] || null,
+      referrerUrl: req.headers.referer || null
+    };
+
+    const view = await ResourceView.recordView(viewData);
+    
+    if (view) {
+      // Increment view count in Resource model
+      await Resource.findByIdAndUpdate(
+        resourceId, 
+        { $inc: { viewCount: 1 } },
+        { new: true }
+      );
+      
+      console.log(`✅ View recorded for resource ${resourceId} by user ${user.username}`);
+      res.json({ success: true, message: 'View recorded' });
+    } else {
+      res.json({ success: false, message: 'View already recorded today' });
+    }
+
+  } catch (error) {
+    console.error('Error recording view:', error);
+    res.status(500).json({ error: 'Failed to record view' });
+  }
+});
+
+// Route to download/view files with download tracking
 app.get('/api/file/:id', async (req, res) => {
   try {
     const fileId = new mongoose.Types.ObjectId(req.params.id);
-    console.log('Requesting file:', fileId);
+    const isDownload = req.query.download === 'true';
+    
+    console.log('Requesting file:', fileId, 'Download:', isDownload);
     
     // Get file info first
     const files = await gridfsBucket.find({ _id: fileId }).toArray();
@@ -413,15 +482,31 @@ app.get('/api/file/:id', async (req, res) => {
     const file = files[0];
     console.log('File found:', file.filename);
     
-    // Set headers
-    // res.set({
-    //   'Content-Type': 'application/pdf',
-    //   'Content-Disposition': `inline; filename="${file.filename}"`
-    // });
-    res.set({
-  'Content-Type': file.contentType,
-  'Content-Disposition': `attachment; filename="${file.filename}"`
-});
+    // Find the resource record
+    const resource = await Resource.findOne({ fileId: fileId });
+    
+    if (resource && isDownload) {
+      // Increment download count
+      await Resource.findByIdAndUpdate(
+        resource._id,
+        { $inc: { downloadCount: 1 } },
+        { new: true }
+      );
+      console.log(`✅ Download count incremented for resource ${resource._id}`);
+    }
+    
+    // Set headers based on whether it's a download or view
+    if (isDownload) {
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${file.metadata?.originalName || file.filename}"`
+      });
+    } else {
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `inline; filename="${file.metadata?.originalName || file.filename}"`
+      });
+    }
 
     // Create download stream
     const downloadStream = gridfsBucket.openDownloadStream(fileId);
@@ -526,8 +611,8 @@ app.get('/api/my-rank', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch rank' });
   }
 });
-// Fetch filtered resources
-// Fetch filtered resources
+
+// Fetch filtered resources with view and download counts
 app.get('/api/resources', async (req, res) => {
   try {
     const { course, semester, subject, type } = req.query;
@@ -544,25 +629,39 @@ app.get('/api/resources', async (req, res) => {
       status: 'approved'
     }).sort({ uploadDate: -1 });
 
-    // ✅ Fetch original filename from GridFS using fileId
+    // ✅ Fetch original filename from GridFS using fileId and include counts
     const enriched = await Promise.all(
       resources.map(async (doc) => {
         let originalName = '';
         try {
-          const gridFile = await gfs.files.findOne({ _id: doc.fileId });
+          const files = await gridfsBucket.find({ _id: doc.fileId }).toArray();
+          const gridFile = files[0];
           originalName = gridFile?.metadata?.originalName || doc.filename;
         } catch (err) {
           console.warn(`GridFS lookup failed for ${doc.fileId}:`, err.message);
           originalName = doc.filename;
         }
 
+        // Get view count from ResourceView collection
+        const viewCount = await ResourceView.getViewCountByResource(doc._id);
+        function toTitleCase(str) {
+  return str
+    .split(' ')
+    .map(word => word[0]?.toUpperCase() + word.slice(1)?.toLowerCase())
+    .join(' ');
+}
+
         return {
           _id: doc._id,
-          originalName,                // ✅ Now sent to frontend
+         title: toTitleCase(`${doc.course} ${doc.semester} ${doc.subject} ${doc.type} ${doc.unit?.join(' ') || ''}`.trim()),
+
+            // ✅ Now sent to frontend
           filename: doc.filename,      // fallback
           author: doc.uploadedBy,
           year: doc.year,
           unit: doc.unit,
+          viewCount: viewCount,        // ✅ View count from ResourceView
+          downloadCount: doc.downloadCount || 0, // ✅ Download count from Resource
           fileUrl: `http://localhost:5000/api/file/${doc.fileId}`
         };
       })
@@ -579,5 +678,4 @@ const PORT = 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🧪 Test upload: http://localhost:${PORT}/api/test-upload`);
 });

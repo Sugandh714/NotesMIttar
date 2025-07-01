@@ -401,7 +401,7 @@ function Resources() {
                     filteredResources.map(res => (
                       <div key={res._id} className="resource-card">
                         <div className="resource-info">
-                          <h3 className="resource-title">{res.originalName || res.filename}</h3>
+                          <h3 className="resource-title">{res.title}</h3>
 
                           <p className="resource-author">
                             <span className="status-dot"></span>
