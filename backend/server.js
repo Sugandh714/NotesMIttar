@@ -414,10 +414,14 @@ app.get('/api/file/:id', async (req, res) => {
     console.log('File found:', file.filename);
     
     // Set headers
+    // res.set({
+    //   'Content-Type': 'application/pdf',
+    //   'Content-Disposition': `inline; filename="${file.filename}"`
+    // });
     res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `inline; filename="${file.filename}"`
-    });
+  'Content-Type': file.contentType,
+  'Content-Disposition': `attachment; filename="${file.filename}"`
+});
 
     // Create download stream
     const downloadStream = gridfsBucket.openDownloadStream(fileId);
@@ -520,6 +524,54 @@ app.get('/api/my-rank', async (req, res) => {
   } catch (error) {
     console.error('Rank fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch rank' });
+  }
+});
+// Fetch filtered resources
+// Fetch filtered resources
+app.get('/api/resources', async (req, res) => {
+  try {
+    const { course, semester, subject, type } = req.query;
+
+    if (!course || !semester || !subject || !type) {
+      return res.status(400).json({ error: 'Missing required query parameters' });
+    }
+
+    const resources = await Resource.find({
+      course,
+      semester,
+      subject,
+      type,
+      status: 'approved'
+    }).sort({ uploadDate: -1 });
+
+    // ✅ Fetch original filename from GridFS using fileId
+    const enriched = await Promise.all(
+      resources.map(async (doc) => {
+        let originalName = '';
+        try {
+          const gridFile = await gfs.files.findOne({ _id: doc.fileId });
+          originalName = gridFile?.metadata?.originalName || doc.filename;
+        } catch (err) {
+          console.warn(`GridFS lookup failed for ${doc.fileId}:`, err.message);
+          originalName = doc.filename;
+        }
+
+        return {
+          _id: doc._id,
+          originalName,                // ✅ Now sent to frontend
+          filename: doc.filename,      // fallback
+          author: doc.uploadedBy,
+          year: doc.year,
+          unit: doc.unit,
+          fileUrl: `http://localhost:5000/api/file/${doc.fileId}`
+        };
+      })
+    );
+
+    res.json(enriched);
+  } catch (error) {
+    console.error('Error fetching resources:', error);
+    res.status(500).json({ error: 'Failed to fetch resources' });
   }
 });
 

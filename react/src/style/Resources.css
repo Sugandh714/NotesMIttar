@@ -35,19 +35,19 @@ Container for the entire view
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.15);
+  background: #f0f0f0;
   border: none;
-  border-radius: 12px;
-  padding: 0.75rem 1rem;
-  color: white;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  color: #333;
   cursor: pointer;
-  transition: all 0.3s ease;
   font-weight: 500;
+  font-size: 0.95rem;
+  transition: background 0.3s ease;
 }
 
 .back-button:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
+  background: #e0e0e0;
 }
 
 .header-info {
@@ -67,14 +67,9 @@ Container for the entire view
 }
 
 .header-title {
-  color:black;
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  display: none;
 }
+
 
 .title-icon {
   font-size: 2rem;
@@ -92,12 +87,12 @@ Container for the entire view
     transform: translateY(-3px);
   }
 }
-
 .breadcrumb {
-  color: black;
-  margin: 0.25rem 0 0 0;
+  margin: 0;
   font-size: 0.9rem;
+  color: #555;
 }
+
 
 /* Main Content */
 .main-content {
@@ -356,31 +351,33 @@ Container for the entire view
   font-size: 0.9rem;
 }
 
-/* Resources View */
 .resources-view-container {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20px);
+  background: white;
   border-radius: 24px;
-  padding: 2rem;
-  margin-top: 1rem;
+  padding: 1rem 1.5rem;
+  margin-top: 0.5rem;
 }
 
 .resources-view-header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem; /* Reduced gap below subject name */
+  padding-top: 0.5rem;  /* Pull content up */
 }
+
+
 
 .resources-view-title {
-  color: black;
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
+  font-size: 2rem; /* Slightly smaller than before */
+  margin-bottom: 0.25rem;
 }
 
+
 .resources-view-subtitle {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 1.1rem;
+  font-size: 1rem;
+  margin-bottom: 1rem; /* Decreased from larger value */
+  color: #555;
 }
+
 
 /* Tabs */
 .tabs-container {
@@ -507,6 +504,17 @@ Container for the entire view
   transform: translateY(-3px);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
+.resources-header {
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+  padding: 0.75rem 1rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
 
 /* 🧼 Base fix: remove blur and make everything white with dark text */
 .resources-container,
@@ -564,6 +572,9 @@ Container for the entire view
 .search-input::placeholder {
   color: #888 !important;
 }
+.header-icon {
+  display: none; /* Optional: Hide icon if unused */
+}
 
 /* 🧼 Fix icon wrappers */
 .year-icon-wrapper,
@@ -572,4 +583,70 @@ Container for the entire view
 .icon-wrapper,
 .tab-icon {
   color: #000 !important;
+}
+.floating-back-button {
+  position: fixed;
+  top: 80px; /* ⬅️ Pushes button below navbar */
+  left: 16px;
+  background: #f0f0f0;
+  color: #333;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  z-index: 1000;
+  transition: background 0.3s ease;
+}
+
+.floating-back-button:hover {
+  background: #e0e0e0;
+}
+.resource-card {
+  padding: 1rem 1.25rem;
+  font-size: 0.95rem;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.resource-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.resource-author, .resource-year, .resource-unit {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 2px 0;
+}
+
+.resource-actions a {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+.resource-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.view-btn,
+.download-btn {
+  background-color: #eee;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: #333;
+  transition: background-color 0.3s ease;
+}
+
+.view-btn:hover,
+.download-btn:hover {
+  background-color: #ddd;
 }
