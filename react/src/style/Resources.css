@@ -1,58 +1,575 @@
-.section-title {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 20px 0 10px;
-}
+Container for the entire view
+/* Improved vertical layout with subtle shadows and padding for a cleaner, modern look */
 
-.card-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.card {
+/* Resources Component Styles */
+/* Resources Component Styles */
+.resources-container {
+  min-height: 100vh;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  padding: 20px;
-  flex: 1 1 180px;
-  text-align: center;
-  cursor: pointer;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-.tabs {
+/* Header Styles */
+.resources-header {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 1.5rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header-left {
   display: flex;
-  gap: 15px;
-  margin: 20px 0;
-}
-
-.tab {
-  background: #e0e0e0;
-  padding: 10px 20px;
-  border-radius: 20px;
-  cursor: pointer;
-}
-
-.tab.active {
-  background: #4caf50;
-  color: white;
-}
-
-.resource-item {
-  background: #fff;
-  padding: 15px;
-  margin: 10px 0;
-  border-radius: 8px;
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  gap: 1rem;
 }
 
-.contributor {
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
   font-weight: 500;
 }
 
-.stars {
-  color: gold;
+.back-button:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-icon {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  padding: 1rem;
+  color: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-title {
+  color:black;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.title-icon {
+  font-size: 2rem;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-5px);
+  }
+  60% {
+    transform: translateY(-3px);
+  }
+}
+
+.breadcrumb {
+  color: black;
+  margin: 0.25rem 0 0 0;
+  font-size: 0.9rem;
+}
+
+/* Main Content */
+.main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.stage-container {
+  text-align: center;
+}
+
+.stage-title {
+  color: black;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.stage-description {
+  color: black;
+  font-size: 1.1rem;
+  margin-bottom: 3rem;
+}
+
+/* Course Card */
+.single-card-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.course-card {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  padding: 3rem 2rem;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.course-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.course-card:hover::before {
+  left: 100%;
+}
+
+.course-card:hover {
+  transform: translateY(-10px);
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.course-icon {
+  margin-bottom: 1.5rem;
+}
+
+.icon-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.ai-icon, .ml-icon {
+  animation: float 3s ease-in-out infinite;
+}
+
+.ml-icon {
+  animation-delay: 1.5s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.course-title {
+  color: black;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.course-subtitle {
+  color: black;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.course-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: black;
+  font-weight: 600;
+}
+
+.arrow-wrapper {
+  display: flex;
+  align-items: center;
+  transition: transform 0.3s ease;
+}
+
+.course-card:hover .arrow-wrapper {
+  transform: translateX(5px);
+}
+
+.arrow-icon {
+  transform: rotate(180deg);
+}
+
+/* Grid Layouts */
+.year-grid, .semester-grid, .subject-grid {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.year-grid {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.semester-grid {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.subject-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+/* Card Styles */
+.year-card, .semester-card, .subject-card {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.year-card::before, .semester-card::before, .subject-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.year-card:hover::before, .semester-card:hover::before, .subject-card:hover::before {
+  left: 100%;
+}
+
+.year-card:hover, .semester-card:hover, .subject-card:hover {
+  transform: translateY(-8px);
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Icon Wrappers */
+.year-icon-wrapper, .semester-icon-wrapper, .subject-icon-wrapper {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  display: inline-block;
+  animation: pulse 2s infinite;
+}
+
+.seedling-icon { animation: grow 2s ease-in-out infinite; }
+.leaf-icon { animation: sway 3s ease-in-out infinite; }
+.tree-icon { animation: rustle 2.5s ease-in-out infinite; }
+.graduation-icon { animation: celebrate 3s ease-in-out infinite; }
+
+@keyframes grow {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes sway {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(2deg); }
+  75% { transform: rotate(-2deg); }
+}
+
+@keyframes rustle {
+  0%, 100% { transform: translateX(0px); }
+  25% { transform: translateX(2px); }
+  75% { transform: translateX(-2px); }
+}
+
+@keyframes celebrate {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(5deg) scale(1.05); }
+  75% { transform: rotate(-5deg) scale(1.05); }
+}
+
+.autumn-icon, .spring-icon {
+  animation: seasonal 3s ease-in-out infinite;
+}
+
+@keyframes seasonal {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-5px) rotate(5deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.year-title, .semester-title, .subject-title {
+  color: black;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.year-subtitle, .semester-subtitle {
+  color: black;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.card-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: black;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Resources View */
+.resources-view-container {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 2rem;
+  margin-top: 1rem;
+}
+
+.resources-view-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.resources-view-title {
+  color: black;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.resources-view-subtitle {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.1rem;
+}
+
+/* Tabs */
+.tabs-container {
+  margin-bottom: 2rem;
+}
+
+.tabs-wrapper {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.tab {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tab:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.active-tab {
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.tab-icon {
+  font-size: 1.2rem;
+}
+
+.notes-icon { animation: write 2s ease-in-out infinite; }
+.books-icon { animation: open 2.5s ease-in-out infinite; }
+.pyqs-icon { animation: flip 3s ease-in-out infinite; }
+
+@keyframes write {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(5deg); }
+}
+
+@keyframes open {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes flip {
+  0%, 100% { transform: rotateY(0deg); }
+  50% { transform: rotateY(10deg); }
+}
+
+/* Search */
+.search-container {
+  margin-bottom: 2rem;
+}
+
+.search-wrapper {
+  position: relative;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.search-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  padding: 1rem 1rem 1rem 3rem;
+  color: white;
+  font-size: 1rem;
+  backdrop-filter: blur(20px);
+  transition: all 0.3s ease;
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.search-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Resource Cards */
+.resources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.resource-card {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.resource-card:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* 🧼 Base fix: remove blur and make everything white with dark text */
+.resources-container,
+.resources-header,
+.course-card,
+.year-card,
+.semester-card,
+.subject-card,
+.resource-card,
+.resources-view-container,
+.tab,
+.search-input {
+  background: #fff !important;
+  color: #000 !important;
+  backdrop-filter: none !important;
+  border: 1px solid #ddd !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+/* 🧼 Fix header and title text */
+.resources-header .header-title,
+.stage-title,
+.course-title,
+.course-subtitle,
+.year-title,
+.semester-title,
+.subject-title,
+.breadcrumb,
+.resources-view-title,
+.tab,
+.search-input,
+.resource-card {
+  color: #111 !important;
+}
+
+/* 🧼 Remove glows & hover transparency */
+.course-card:hover,
+.tab:hover,
+.resource-card:hover,
+.year-card:hover,
+.semester-card:hover,
+.subject-card:hover {
+  background: #f7f7f7 !important;
+  transform: translateY(-3px);
+}
+
+/* 🧼 Update active tab appearance */
+.active-tab {
+  background: #e0e0e0 !important;
+  box-shadow: none !important;
+  color: #000 !important;
+}
+
+/* 🧼 Search bar placeholder color */
+.search-input::placeholder {
+  color: #888 !important;
+}
+
+/* 🧼 Fix icon wrappers */
+.year-icon-wrapper,
+.semester-icon-wrapper,
+.subject-icon-wrapper,
+.icon-wrapper,
+.tab-icon {
+  color: #000 !important;
 }
