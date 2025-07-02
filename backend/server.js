@@ -4,15 +4,11 @@ const bodyParser = require('body-parser');
 const bcrypt = require('bcryptjs');
 const Resource = require('./models/resource');
 const User = require('./models/user');
-const ResourceView = require('./models/Resource_Views'); // Add this import
+const ResourceView = require('./models/Resource_Views'); 
 const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
-
 const app = express();
-
-console.log('Starting server...');
-
 // MongoDB connection
 const mongoURI = 'mongodb://localhost:27017/notesmittarDB';
 

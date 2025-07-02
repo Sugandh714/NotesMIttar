@@ -6,8 +6,10 @@ import {
 } from 'lucide-react';
 import '../style/Resources.css';
 import Navbar from '../component/Navbar';
+import { useNavigate } from 'react-router-dom';
 
 function Resources() {
+  const navigate = useNavigate();
   const [stage, setStage] = useState(1);
   const [semesters, setSemesters] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -492,9 +494,16 @@ function Resources() {
                           <h3 className="resource-title">{res.title}</h3>
 
                           <p className="resource-author">
-                            <span className="status-dot"></span>
-                            Uploaded by: {res.author}
-                          </p>
+  <span className="status-dot"></span>
+  Uploaded by:{" "}
+  <span 
+    className="clickable-uploader"
+    onClick={() => navigate(`/Contributor/${res.author}`)}
+  >
+    {res.author}
+  </span>
+</p>
+
                           {res.year && (
                             <p className="resource-year">Year: {res.year}</p>
                           )}

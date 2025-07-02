@@ -5,15 +5,18 @@ import Navbar from '../component/Navbar';
 import ContactUs from '../component/ContactUs';
 
 const Upload = () => {
+
   const [activeTab, setActiveTab] = useState('upload');
   const [formData, setFormData] = useState({
-    type: '',
-    semester: '',
-    course: '',
-    subject: '',
-    unit: [],
-    year: '',
-  });
+  type: '',
+  semester: '',
+  course: '',
+  subject: '',
+  unit: [],
+  year: '',
+  examType: '', // 🆕 Add this
+});
+
 
   const [file, setFile] = useState(null);
 
@@ -106,7 +109,10 @@ const handleSubmit = async (e) => {
     if (formData.type === 'PYQs' && formData.year) {
       uploadFormData.append('year', formData.year);
     }
-    
+    if (formData.type === 'PYQs' && formData.examType) {
+  uploadFormData.append('examType', formData.examType);
+}
+
     console.log('Sending request to backend...');
     const username = sessionStorage.getItem('username');
     const email = sessionStorage.getItem('email');
@@ -139,16 +145,19 @@ if (!username || !email) {
     
     // Show success message
     alert(result.message || 'Upload successful!');
-    
+
+
     // Reset form
     setFormData({
-      type: '',
-      semester: '',
-      course: '',
-      subject: '',
-      unit: [],
-      year: '',
-    });
+  type: '',
+  semester: '',
+  course: '',
+  subject: '',
+  unit: [],
+  year: '',
+  examType: '', // 🆕 clear this too
+});
+
     setFile(null);
     
   } catch (error) {
@@ -157,13 +166,15 @@ if (!username || !email) {
 
      // Reset the form if multer error
   setFormData({
-    type: '',
-    semester: '',
-    course: '',
-    subject: '',
-    unit: [],
-    year: '',
-  });
+  type: '',
+  semester: '',
+  course: '',
+  subject: '',
+  unit: [],
+  year: '',
+  examType: '', // 🆕 clear this too
+});
+
   setFile(null);
   }
 };
@@ -312,6 +323,21 @@ if (!username || !email) {
                 />
               </label>
             )}
+            {formData.type === 'PYQs' && (
+  <label>
+    Exam Type:
+    <select
+      name="examType"
+      value={formData.examType}
+      onChange={handleChange}
+      required
+    >
+      <option value="">Select</option>
+      <option value="Mid Sem">Mid Sem</option>
+      <option value="End Sem">End Sem</option>
+    </select>
+  </label>
+)}
 
 
             <button type="submit">Upload</button>
