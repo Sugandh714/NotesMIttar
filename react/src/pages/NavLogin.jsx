@@ -38,7 +38,7 @@ function NavLogin() {
         sessionStorage.setItem('email', data.user.email);
         sessionStorage.setItem('name', data.user.name);
 
-        navigate(from); // ⬅️ Navigate to previous page
+        navigate(from, { replace: true }); // ⬅️ Changed to replace: true
       } else {
         alert(data.error || 'Login failed');
       }
