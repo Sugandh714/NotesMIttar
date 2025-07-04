@@ -1,16 +1,19 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import {  useLocation } from 'react-router-dom';
 import GoogleIcon from '../assets/images/google-icon.jpg'; // Import Google icon image
 import '../style/Auth.css'; // Shared CSS for login/signup
 import Navbar from '../component/Navbar';
 
-function Login() {
+function NavLogin() {
   const BASE_URL = 'http://localhost:5000/api';
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
+  // Fallback to home if no previous route
+  const from = location.state?.from || '/';
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -29,14 +32,13 @@ function Login() {
       const data = await res.json();
 
       if (res.ok) {
-
         sessionStorage.setItem('loggedIn', 'true');
         sessionStorage.setItem('userId', data.user._id);
         sessionStorage.setItem('username', data.user.username);
         sessionStorage.setItem('email', data.user.email);
         sessionStorage.setItem('name', data.user.name);
 
-        navigate('/');
+        navigate(from); // ⬅️ Navigate to previous page
       } else {
         alert(data.error || 'Login failed');
       }
@@ -92,4 +94,4 @@ function Login() {
   );
 }
 
-export default Login;
+export default NavLogin;

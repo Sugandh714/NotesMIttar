@@ -1,8 +1,13 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 
-const ProtectedRoute = ({ children }) => {
+function ProtectedRoute({ children }) {
   const isLoggedIn = sessionStorage.getItem('loggedIn') === 'true';
-  return isLoggedIn ? children : <Navigate to="/login" replace />;
-};
+  const location = useLocation();
 
+  if (!isLoggedIn) {
+    return <Navigate to="/NavLogin" state={{ from: location.pathname }} replace/>;
+  }
+
+  return children;
+}
 export default ProtectedRoute;

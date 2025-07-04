@@ -10,7 +10,7 @@ import Upload from './pages/Upload';
 import { Navigate } from 'react-router-dom';
 import ProtectedRoute from './component/ProtectedRoute';
 import LeaderboardPage from './pages/LeaderboardPage';
-
+import NavLogin from './pages/NavLogin';
 function App() {
   return (
     <div>
@@ -21,6 +21,7 @@ function App() {
           <Resources />
         </ProtectedRoute>} />
         <Route path="/login" element={<Login />} />
+        <Route path="/NavLogin" element={<NavLogin />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/Scoreboard" element={<ProtectedRoute>
          <LeaderboardPage  />

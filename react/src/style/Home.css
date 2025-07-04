@@ -129,17 +129,16 @@ nav a:hover {
   font-size: 1.8rem;
   margin-bottom: 1rem;
 }
-
 .scoreboard ol {
-  list-style-position: inside;
-  padding: 0;
-  margin: 0;
+  display: inline-block; /* keeps it centered */
+  text-align: justify;   /* makes the text justified */
+  max-width: 600px;      /* control line length for readability */
 }
 
 .scoreboard li {
-  margin-bottom: 0.5rem;
-  font-size: 1.1rem;
+  margin-bottom: 10px;
 }
+
 
 /* Footer */
 footer {
