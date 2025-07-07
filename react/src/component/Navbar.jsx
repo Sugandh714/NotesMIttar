@@ -5,8 +5,11 @@ import { useEffect, useRef, useState } from 'react';
 import '../style/Navbar.css';
 
 export default function Navbar() {
-  const navigate = useNavigate();
-  const isLoggedIn = sessionStorage.getItem('loggedIn') === 'true';
+
+  const isAdmin = sessionStorage.getItem('isAdmin') === 'true';
+const isLoggedIn = sessionStorage.getItem('loggedIn') === 'true';
+const navigate = useNavigate();
+
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef();
   
@@ -45,23 +48,28 @@ const handleUploadClick = () => {
         <Link to="/scoreboard">Scoreboard</Link>
 
         {isLoggedIn ? (
-          <div className="profile-dp-wrapper" ref={menuRef}>
-            <img
-              src="/src/assets/images/user-icon.jpg"
-              alt="User"
-              className="dp-icon"
-              onClick={() => setShowMenu(!showMenu)}
-            />
-            {showMenu && (
-              <div className="dropdown-menu">
-                {/* <button onClick={() => navigate('/profile')}>My Profile</button> */}
-                <button onClick={handleLogout}>Logout</button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <Link to="/login">Login</Link>
+  <div className="profile-dp-wrapper" ref={menuRef}>
+    <img
+      src="/src/assets/images/user-icon.jpg"
+      alt="User"
+      className="dp-icon"
+      onClick={() => setShowMenu(!showMenu)}
+    />
+    {showMenu && (
+      <div className="dropdown-menu">
+        {sessionStorage.getItem('isAdmin') === 'true' && (
+          <button onClick={() => navigate('/adminHome')}>
+            Admin Dashboard
+          </button>
         )}
+        <button onClick={handleLogout}>Logout</button>
+      </div>
+    )}
+  </div>
+) : (
+  <Link to="/login">Login</Link>
+)}
+
       </nav>
     </header>
   );

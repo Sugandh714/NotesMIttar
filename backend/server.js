@@ -187,6 +187,7 @@ app.post('/api/login', async (req, res) => {
         name: user.name,
         username: user.username,
         email: user.email,
+         isAdmin: user.isAdmin ,
         uploadCount: user.uploadCount
       }
     });

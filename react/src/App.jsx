@@ -39,7 +39,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-         <Route path="/admin" element={<AdminHome />} />
+         <Route path="/adminHome" element={<AdminHome />} />
   <Route path="/admin/manage-contributors" element={<ManageContributor />} />
   <Route path="/admin/manage-resources" element={<ManageResources />} />
   <Route path="/admin/replace-extend-requests" element={<ReplaceExtendRequests />} />

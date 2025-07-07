@@ -1,8 +1,14 @@
 import React from 'react';
 import '../style/admin.css';
-import { Link } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 
 function AdminHome() {
+    const isAdmin = sessionStorage.getItem('isAdmin') === 'true';
+
+if (!isAdmin) {
+  return <Navigate to="/login" />;
+}
+
   return (
     <div className="admin-container">
       <div className="admin-header">

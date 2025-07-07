@@ -8,7 +8,12 @@ const userSchema = new mongoose.Schema({
     unique: true // ✅ enforce uniqueness
   },
   email: String,
-  password: String, // stored as a hash ideally
+  password: String,
+  isAdmin: {
+  type: Boolean,
+  default: false
+},
+ // stored as a hash ideally
   uploadCount: { type: Number, default: 0 },
   registeredAt: { type: Date, default: Date.now }
 }, { versionKey: false });
