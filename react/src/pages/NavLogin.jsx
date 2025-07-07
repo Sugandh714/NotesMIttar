@@ -37,7 +37,10 @@ function NavLogin() {
         sessionStorage.setItem('username', data.user.username);
         sessionStorage.setItem('email', data.user.email);
         sessionStorage.setItem('name', data.user.name);
-
+          sessionStorage.setItem('user', JSON.stringify({
+    username: data.user.username,
+    email: data.user.email
+  }));
         navigate(from, { replace: true }); // ⬅️ Changed to replace: true
       } else {
         alert(data.error || 'Login failed');
@@ -94,4 +97,4 @@ function NavLogin() {
   );
 }
 
-export default NavLogin;
+export default NavLogin; 

@@ -59,12 +59,13 @@ function Resources() {
 
   // Get user credentials for tracking
   const getUserCredentials = () => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    return {
-      username: user.username,
-      email: user.email
-    };
+  const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+  return {
+    username: user.username,
+    email: user.email
   };
+};
+
 
   // Function to record view
   const recordView = async (resourceId) => {

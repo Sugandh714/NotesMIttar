@@ -35,7 +35,10 @@ function Login() {
         sessionStorage.setItem('username', data.user.username);
         sessionStorage.setItem('email', data.user.email);
         sessionStorage.setItem('name', data.user.name);
-
+          sessionStorage.setItem('user', JSON.stringify({
+    username: data.user.username,
+    email: data.user.email
+  }));
         navigate('/');
       } else {
         alert(data.error || 'Login failed');
