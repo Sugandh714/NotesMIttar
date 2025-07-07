@@ -5,12 +5,16 @@ import Resources from './pages/Resources';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ContributorPage from './pages/ContributorPage';
-
+import AdminHome from './pages/AdminHome';
+import ManageContributor from './pages/ManageContributor';
+import ManageResources from './pages/ManageResources';
+import ReplaceExtendRequests from './pages/ReplaceExtendRequests';
 import Upload from './pages/Upload';
 import { Navigate } from 'react-router-dom';
 import ProtectedRoute from './component/ProtectedRoute';
 import LeaderboardPage from './pages/LeaderboardPage';
 import NavLogin from './pages/NavLogin';
+
 function App() {
   return (
     <div>
@@ -35,6 +39,10 @@ function App() {
             </ProtectedRoute>
           }
         />
+         <Route path="/admin" element={<AdminHome />} />
+  <Route path="/admin/manage-contributors" element={<ManageContributor />} />
+  <Route path="/admin/manage-resources" element={<ManageResources />} />
+  <Route path="/admin/replace-extend-requests" element={<ReplaceExtendRequests />} />
       </Routes>
       
       
