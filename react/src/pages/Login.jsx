@@ -48,16 +48,15 @@ function Login() {
         }
 
         // ✅ FIXED: Properly handle admin status with explicit boolean check
-        console.log('Login response isAdmin:', data.user.isAdmin, typeof data.user.isAdmin);
-        
+     
         if (data.user.isAdmin === true) {
           sessionStorage.setItem('isAdmin', 'true');
           sessionStorage.setItem('admin', JSON.stringify(data.user));
-          console.log('✅ Admin user logged in:', data.user.username);
+   
         } else {
           sessionStorage.setItem('isAdmin', 'false');
           sessionStorage.removeItem('admin');
-          console.log('Regular user logged in:', data.user.username);
+    
         }
 
         navigate('/');

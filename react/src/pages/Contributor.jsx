@@ -23,8 +23,6 @@ export default function Contributor() {
   const { name } = useParams();
   const decodedName = decodeURIComponent(name);
   const contributor = contributorData[decodedName];
-  console.log("Decoded Name:", decodedName);
-console.log("Contributor:", contributor);
 
   if (!contributor) {
     return <div className="contributor-container">Contributor not found.</div>;
