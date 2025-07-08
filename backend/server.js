@@ -196,96 +196,137 @@ app.post('/api/login', async (req, res) => {
     res.status(500).json({ error: 'Server error during login' });
   }
 });
-// Change Password Route
-// Add these routes to your server.js file
-
-// Get user profile route
+// Fixed Get user profile route
 app.get('/api/user-profile', async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+  
     const username = req.headers.username;
     
-    if (!token && !username) {
+    console.log('Profile request headers:', { 
+
+      username: username,
+      allHeaders: req.headers 
+    });
+    
+    if (!username) {
       return res.status(401).json({ error: 'Authorization required' });
     }
-
-    // Try to get username from headers first, then from token if needed
+    
     let userIdentifier = username;
     
+    
     if (!userIdentifier) {
-      // If you have JWT token logic, implement it here
-      // For now, we'll rely on username from headers
-      return res.status(401).json({ error: 'Username required in headers' });
+      return res.status(401).json({ error: 'Username required' });
     }
-
+    
     const user = await User.findOne({ username: userIdentifier });
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-  res.json({
-    _id: user._id,
-    name: user.name,
-    username: user.username,
-    email: user.email,
-    contact: user.contact || '',
-    avatar: user.avatar || null,
-    description: user.description || '',
-    semester: user.semester || '',
-    branch: user.branch || '',
-    uploadCount: user.uploadCount || 0
-  });
-
+    
+    // Map backend fields to frontend expected fields
+    res.json({
+      _id: user._id,
+      name: user.name,
+      fullName: user.name, // Map name to fullName for frontend
+      username: user.username,
+      email: user.email,
+      contact: user.contact || '',
+      phone: user.contact || '', // Map contact to phone for frontend
+      avatar: user.avatar || '👨‍🎓',
+      description: user.description || '',
+      semester: user.semester || '',
+      branch: user.branch || '',
+      uploadCount: user.uploadCount || 0,
+      // Add missing fields expected by frontend
+      dateJoined: user.createdAt || user.dateJoined || new Date(),
+      rank: user.rank || 'Bronze Member',
+      points: user.points || 0,
+      isAdmin: user.isAdmin || false,
+      createdAt: user.createdAt
+    });
+    
   } catch (error) {
     console.error('Get user profile error:', error);
     res.status(500).json({ error: 'Failed to fetch user profile' });
   }
 });
 
-// Update user profile route
+// Fixed Update user profile route
 app.post('/api/update-profile', async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
     const username = req.headers.username;
-    const { contact, avatar, description, semester, branch } = req.body;
-
-    if (!token && !username) {
+    const { 
+      contact, 
+      phone, // Handle both contact and phone
+      avatar, 
+      description, 
+      semester, 
+      branch, 
+      email,
+      fullName 
+    } = req.body;
+    
+    console.log('Update profile request:', { 
+      username: username,
+      bodyKeys: Object.keys(req.body)
+    });
+    
+    if ( !username) {
       return res.status(401).json({ error: 'Authorization required' });
     }
-
-    const userIdentifier = username;
-
+    
+    let userIdentifier = username;
+    
+    
+    
+    if (!userIdentifier) {
+      return res.status(401).json({ error: 'Username required' });
+    }
+    
     const user = await User.findOne({ username: userIdentifier });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
+    
+    // Prepare update object with field mapping
+    const updateData = {};
+    
+    if (contact !== undefined) updateData.contact = contact;
+    if (phone !== undefined) updateData.contact = phone; // Map phone to contact
+    if (avatar !== undefined) updateData.avatar = avatar;
+    if (description !== undefined) updateData.description = description;
+    if (semester !== undefined) updateData.semester = semester;
+    if (branch !== undefined) updateData.branch = branch;
+    if (email !== undefined) updateData.email = email;
+    if (fullName !== undefined) updateData.name = fullName; // Map fullName to name
+    
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
-      {
-        contact: contact || user.contact,
-        avatar: avatar || user.avatar,
-        description: description || user.description,
-        semester: semester || user.semester,
-        branch: branch || user.branch
-      },
+      updateData,
       { new: true }
     );
-
+    
     res.json({
       message: 'Profile updated successfully',
       user: {
         _id: updatedUser._id,
         name: updatedUser.name,
+        fullName: updatedUser.name, // Map name to fullName
         username: updatedUser.username,
         email: updatedUser.email,
         contact: updatedUser.contact,
+        phone: updatedUser.contact, // Map contact to phone
         avatar: updatedUser.avatar,
         description: updatedUser.description,
         semester: updatedUser.semester,
         branch: updatedUser.branch,
-        uploadCount: updatedUser.uploadCount
+        uploadCount: updatedUser.uploadCount,
+        dateJoined: updatedUser.createdAt || updatedUser.dateJoined,
+        rank: updatedUser.rank || 'Bronze Member',
+        points: updatedUser.points || 0,
+        isAdmin: updatedUser.isAdmin || false
       }
     });
   } catch (error) {
@@ -293,28 +334,69 @@ app.post('/api/update-profile', async (req, res) => {
     res.status(500).json({ error: 'Failed to update profile' });
   }
 });
+app.get('/api/user-rank/:username', async (req, res) => {
+  const username = req.params.username;
 
-// Change user password route
+  const allUsers = await User.find({}, 'username uploadCount').sort({ uploadCount: -1 });
+
+  const rank = allUsers.findIndex(u => u.username === username);
+
+  if (rank === -1) {
+    return res.status(404).json({ error: 'User not found in ranking list' });
+  }
+
+  const user = allUsers[rank];
+  const userRank = rank + 1;
+  const aboveUser = allUsers[rank - 1] || null;
+
+  let uploadsNeeded = null;
+  if (aboveUser) {
+    uploadsNeeded = (aboveUser.uploadCount - user.uploadCount) + 1;
+  }
+
+  res.json({
+    username: user.username,
+    uploadCount: user.uploadCount,
+    rank: userRank,
+    uploadsNeededToBeatAbove: uploadsNeeded,
+    aboveUsername: aboveUser?.username || null,
+    aboveUploadCount: aboveUser?.uploadCount || null
+  });
+});
+
+// Fixed Change password route
 app.post('/api/change-password', async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
     const username = req.headers.username;
     const { currentPassword, newPassword } = req.body;
-
-    if (!token || !username) {
+    
+    console.log('Change password request:', { 
+      username: username,
+      hasCurrentPassword: !!currentPassword,
+      hasNewPassword: !!newPassword
+    });
+    
+    if ( !username) {
       return res.status(401).json({ error: 'Authorization required' });
     }
+    
+    let userIdentifier = username;
 
-    const user = await User.findOne({ username });
+    
+    if (!userIdentifier) {
+      return res.status(401).json({ error: 'Username required' });
+    }
+    
+    const user = await User.findOne({ username: userIdentifier });
     if (!user) return res.status(404).json({ error: 'User not found' });
-
+    
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) return res.status(400).json({ error: 'Current password is incorrect' });
-
+    
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
     await user.save();
-
+    
     res.json({ message: 'Password updated successfully' });
   } catch (error) {
     console.error('Password change error:', error);
@@ -322,7 +404,17 @@ app.post('/api/change-password', async (req, res) => {
   }
 });
 
-
+// Add middleware to log all requests (for debugging)
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`, {
+    headers: {
+      authorization: req.headers.authorization ? 'Bearer ***' : 'none',
+      username: req.headers.username || 'none',
+      'content-type': req.headers['content-type'] || 'none'
+    }
+  });
+  next();
+});
 // Upload Route with proper error handling
 app.post('/api/upload', (req, res) => {
   // Use multer middleware with error handling
@@ -725,39 +817,29 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 app.get('/api/contributor/:username/resources', async (req, res) => {
-  const { username } = req.params;
   try {
-    const user = await User.findOne({ username });
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const username = req.params.username;
 
-    const resources = await Resource.find({
-      uploadedBy: username,
-      status: 'approved'
-    });
+    const contributor = await User.findOne(
+      { username },
+      'username name contact avatar branch semester description uploadCount'
+    );
+
+    if (!contributor) {
+      return res.status(404).json({ error: 'Contributor not found' });
+    }
+
+    const resources = await Resource.find({ uploadedBy: username, status: 'approved' }).sort({ uploadDate: -1 });
+
 
     res.json({
-      contributor: {
-        name: user.name,
-        username: user.username,
-        branch: user.branch,
-        totalUploads: user.uploadCount,
-        badge:
-          user.uploadCount >= 50
-            ? 'Gold'
-            : user.uploadCount >= 20
-              ? 'Silver'
-              : user.uploadCount >= 5
-                ? 'Bronze'
-                : 'Newbie'
-      },
+      contributor,
       resources
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error fetching contributor info.' });
+    res.status(500).json({ error: 'Server error' });
   }
 });
-
 
 // Get user's rank
 app.get('/api/my-rank', async (req, res) => {

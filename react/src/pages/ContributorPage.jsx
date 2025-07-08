@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import '../style/LeaderBoard.css';
+// import Navbar from '../component/Navbar';
 
 function ContributorPage() {
   const { username } = useParams();
@@ -15,7 +16,7 @@ function ContributorPage() {
       .get(`http://localhost:5000/api/contributor/${username}/resources`)
       .then((res) => {
         setContributor(res.data.contributor);
-        setResources(res.data.resources);
+        setResources(res.data.resources); // only approved resources
         setLoading(false);
       })
       .catch((err) => {
@@ -25,6 +26,22 @@ function ContributorPage() {
       });
   }, [username]);
 
+  const renderAvatar = (avatar) => {
+    // If avatar is an emoji (Unicode character)
+    if (avatar && /\p{Extended_Pictographic}/u.test(avatar)) {
+      return <div className="avatar-emoji">{avatar}</div>;
+    }
+
+    return (
+
+      <img
+        src={avatar && avatar.startsWith('http') ? avatar : '/src/assets/images/user-icon.jpg'}
+        alt="Avatar"
+        className="avatar-img"
+      />
+    );
+  };
+
   if (loading) return <div className="container">Loading...</div>;
   if (error) return <div className="container">{error}</div>;
   if (!contributor) return <div className="container">Contributor not found.</div>;
@@ -32,9 +49,21 @@ function ContributorPage() {
   return (
     <div className="container">
       <div className="profile-header">
-        <h2>{contributor.username}</h2>
-        <p>Total Uploads: {contributor.totalUploads}</p>
-        <span className="badge">Badge: {contributor.badge}</span>
+        <div className="avatar-wrapper">
+          {renderAvatar(contributor.avatar)}
+        </div>
+
+        <div className="profile-info">
+          <h2>{contributor.name || contributor.username}</h2>
+          {contributor.username && <p>@{contributor.username}</p>}
+          {contributor.contact && <p>📞 {contributor.contact}</p>}
+          {contributor.branch && <p>🎓 Branch: {contributor.branch}</p>}
+          {contributor.semester && <p>📚 Semester: {contributor.semester}</p>}
+          {contributor.description && <p>📝 {contributor.description}</p>}
+          <p>📂 Approved Uploads: {resources.length}</p>
+<p>📦 Total Uploads (including pending): {contributor.uploadCount}</p>
+
+        </div>
       </div>
 
       <h3>Uploaded Resources</h3>
@@ -69,7 +98,6 @@ function ContributorPage() {
                 📥 Download
               </a>
             </div>
-
           </li>
         ))}
       </ul>

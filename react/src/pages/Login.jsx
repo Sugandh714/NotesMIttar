@@ -30,25 +30,30 @@ function Login() {
       const data = await res.json();
 
       if (res.ok) {
-  sessionStorage.setItem('loggedIn', 'true');
-  sessionStorage.setItem('userId', data.user._id);
-  sessionStorage.setItem('username', data.user.username);
-  sessionStorage.setItem('email', data.user.email);
-  sessionStorage.setItem('name', data.user.name);
-  sessionStorage.setItem('user', JSON.stringify({
-    username: data.user.username,
-    email: data.user.email
-  })) 
-  navigate('/');
+        sessionStorage.setItem('loggedIn', 'true');
+        sessionStorage.setItem('userId', data.user._id);
+        sessionStorage.setItem('username', data.user.username);
+        sessionStorage.setItem('email', data.user.email);
+        sessionStorage.setItem('name', data.user.name);
+        sessionStorage.setItem('user', JSON.stringify({
+          username: data.user.username,
+          email: data.user.email
+        }
 
-  if (data.user.isAdmin) {
-    sessionStorage.setItem('isAdmin', 'true');
-    sessionStorage.setItem('admin', JSON.stringify(data.user));
-    // navigate('/AdminHome');
-  } 
-} else {
-  alert(data.error || 'Login failed');
-}
+        ))
+        if (res.avatar) {
+          sessionStorage.setItem('avatar', res.avatar);
+        }
+        navigate('/');
+
+        if (data.user.isAdmin) {
+          sessionStorage.setItem('isAdmin', 'true');
+          sessionStorage.setItem('admin', JSON.stringify(data.user));
+          // navigate('/AdminHome');
+        }
+      } else {
+        alert(data.error || 'Login failed');
+      }
 
     } catch (err) {
       alert('Something went wrong: ' + err.message);

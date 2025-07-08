@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../style/Leaderboard.css';
-
+import Navbar from '../component/Navbar';
 function LeaderboardPage() {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,6 +25,9 @@ function LeaderboardPage() {
   };
 
   return (
+    <>
+    <Navbar/>
+
     <div className="container">
       <h2 className="page-title">📚 Leaderboard</h2>
 
@@ -54,6 +57,7 @@ function LeaderboardPage() {
         ))
       )}
     </div>
+        </>
   );
 }
 
