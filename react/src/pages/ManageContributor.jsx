@@ -2,6 +2,7 @@ import React from 'react';
 import '../style/admin.css';
 
 function ManageContributor() {
+  
   const contributors = [
     { name: 'Priya', username: 'p', uploads: 10, badge: 'Silver', status: 'active' },
     { name: 'Rahul', username: 'rahul123', uploads: 2, badge: 'Newbie', status: 'inactive' },
