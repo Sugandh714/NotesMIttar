@@ -62,6 +62,7 @@ export default function Navbar() {
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('avatar');
     sessionStorage.removeItem('username');
+    sessionStorage.clear(); // Clear session storage on login page load
     setShowMenu(false);
     setUserAvatar(null);
     navigate('/');

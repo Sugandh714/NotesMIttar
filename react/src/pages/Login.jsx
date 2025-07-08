@@ -1,17 +1,16 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import GoogleIcon from '../assets/images/google-icon.jpg'; // Import Google icon image
-import '../style/Auth.css'; // Shared CSS for login/signup
+import GoogleIcon from '../assets/images/google-icon.jpg';
+import '../style/Auth.css';
 import Navbar from '../component/Navbar';
-import AdminHome from './AdminHome';
 
 function Login() {
+  
   const BASE_URL = 'http://localhost:5000/api';
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
-
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -30,27 +29,38 @@ function Login() {
       const data = await res.json();
 
       if (res.ok) {
+        // Store basic user info
         sessionStorage.setItem('loggedIn', 'true');
         sessionStorage.setItem('userId', data.user._id);
         sessionStorage.setItem('username', data.user.username);
         sessionStorage.setItem('email', data.user.email);
         sessionStorage.setItem('name', data.user.name);
+        
+        // Store user object
         sessionStorage.setItem('user', JSON.stringify({
           username: data.user.username,
           email: data.user.email
+        }));
+
+        // Handle avatar - FIXED: use data.user.avatar instead of res.avatar
+        if (data.user.avatar) {
+          sessionStorage.setItem('avatar', data.user.avatar);
         }
 
-        ))
-        if (res.avatar) {
-          sessionStorage.setItem('avatar', res.avatar);
-        }
-        navigate('/');
-
-        if (data.user.isAdmin) {
+        // ✅ FIXED: Properly handle admin status with explicit boolean check
+        console.log('Login response isAdmin:', data.user.isAdmin, typeof data.user.isAdmin);
+        
+        if (data.user.isAdmin === true) {
           sessionStorage.setItem('isAdmin', 'true');
           sessionStorage.setItem('admin', JSON.stringify(data.user));
-          // navigate('/AdminHome');
+          console.log('✅ Admin user logged in:', data.user.username);
+        } else {
+          sessionStorage.setItem('isAdmin', 'false');
+          sessionStorage.removeItem('admin');
+          console.log('Regular user logged in:', data.user.username);
         }
+
+        navigate('/');
       } else {
         alert(data.error || 'Login failed');
       }
@@ -59,9 +69,6 @@ function Login() {
       alert('Something went wrong: ' + err.message);
     }
   };
-
-
-
 
   return (
     <>
@@ -79,7 +86,6 @@ function Login() {
               onChange={(e) => setUsernameOrEmail(e.target.value)}
               required
             />
-
 
             <input
               type="password"
