@@ -1,21 +1,55 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  name: String,
+  name: {
+    type: String,
+    required: true
+  },
   username: {
     type: String,
     required: true,
-    unique: true // ✅ enforce uniqueness
+    unique: true
   },
-  email: String,
-  password: String,
-  isAdmin: {
-  type: Boolean,
-  default: false
-},
- // stored as a hash ideally
-  uploadCount: { type: Number, default: 0 },
-  registeredAt: { type: Date, default: Date.now }
-}, { versionKey: false });
+  email: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  password: {
+    type: String,
+    required: true
+  },
+  uploadCount: {
+    type: Number,
+    default: 0
+  },
+  contact: {
+    type: String,
+    default: ''
+  },
+  avatar: {
+    type: String,
+    default: null
+  },
+  branch: {
+    type: String,
+    default: ''
+  },
+  semester: {
+    type: String,
+    default: ''
+  },
+  description: {
+    type: String,
+    default: ''
+  },
+  registeredAt: {
+    type: Date,
+    default: Date.now
+  }
+}, {
+  timestamps: true,  // includes createdAt and updatedAt
+  versionKey: false  // disables __v field
+});
 
-module.exports = mongoose.model('user', userSchema);
+module.exports = mongoose.model('User', userSchema);

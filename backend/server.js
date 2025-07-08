@@ -196,6 +196,132 @@ app.post('/api/login', async (req, res) => {
     res.status(500).json({ error: 'Server error during login' });
   }
 });
+// Change Password Route
+// Add these routes to your server.js file
+
+// Get user profile route
+app.get('/api/user-profile', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const username = req.headers.username;
+    
+    if (!token && !username) {
+      return res.status(401).json({ error: 'Authorization required' });
+    }
+
+    // Try to get username from headers first, then from token if needed
+    let userIdentifier = username;
+    
+    if (!userIdentifier) {
+      // If you have JWT token logic, implement it here
+      // For now, we'll rely on username from headers
+      return res.status(401).json({ error: 'Username required in headers' });
+    }
+
+    const user = await User.findOne({ username: userIdentifier });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+  res.json({
+    _id: user._id,
+    name: user.name,
+    username: user.username,
+    email: user.email,
+    contact: user.contact || '',
+    avatar: user.avatar || null,
+    description: user.description || '',
+    semester: user.semester || '',
+    branch: user.branch || '',
+    uploadCount: user.uploadCount || 0
+  });
+
+  } catch (error) {
+    console.error('Get user profile error:', error);
+    res.status(500).json({ error: 'Failed to fetch user profile' });
+  }
+});
+
+// Update user profile route
+app.post('/api/update-profile', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const username = req.headers.username;
+    const { contact, avatar, description, semester, branch } = req.body;
+
+    if (!token && !username) {
+      return res.status(401).json({ error: 'Authorization required' });
+    }
+
+    const userIdentifier = username;
+
+    const user = await User.findOne({ username: userIdentifier });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      {
+        contact: contact || user.contact,
+        avatar: avatar || user.avatar,
+        description: description || user.description,
+        semester: semester || user.semester,
+        branch: branch || user.branch
+      },
+      { new: true }
+    );
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        contact: updatedUser.contact,
+        avatar: updatedUser.avatar,
+        description: updatedUser.description,
+        semester: updatedUser.semester,
+        branch: updatedUser.branch,
+        uploadCount: updatedUser.uploadCount
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Change user password route
+app.post('/api/change-password', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const username = req.headers.username;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!token || !username) {
+      return res.status(401).json({ error: 'Authorization required' });
+    }
+
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) return res.status(400).json({ error: 'Current password is incorrect' });
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Password change error:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
 
 // Upload Route with proper error handling
 app.post('/api/upload', (req, res) => {

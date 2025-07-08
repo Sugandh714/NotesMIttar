@@ -14,6 +14,7 @@ import { Navigate } from 'react-router-dom';
 import ProtectedRoute from './component/ProtectedRoute';
 import LeaderboardPage from './pages/LeaderboardPage';
 import NavLogin from './pages/NavLogin';
+import ProfilePage from './pages/ProfilePage';
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
   <Route path="/admin/manage-contributors" element={<ManageContributor />} />
   <Route path="/admin/manage-resources" element={<ManageResources />} />
   <Route path="/admin/replace-extend-requests" element={<ReplaceExtendRequests />} />
+   <Route path="/ProfilePage" element={<ProfilePage />} />
       </Routes>
       
       
