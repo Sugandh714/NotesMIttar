@@ -593,10 +593,7 @@ const ProfilePage = () => {
                     <p>Approve, reject, or review uploaded study materials.</p>
                 </Link>
                 
-                <Link to="/admin/replace-extend-requests" className="stat-card">
-                    <h3>🔁 Replace/Extend Requests</h3>
-                    <p>Handle requests to replace or extend previously uploaded content.</p>
-                </Link>
+                
             </div>
         </div>
     </div>

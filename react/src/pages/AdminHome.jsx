@@ -1,5 +1,6 @@
 import React from 'react';
 import '../style/admin.css';
+import '../style/ManageResources.css'; // Assuming you have a CSS file for styling
 import { Navigate, Link } from 'react-router-dom';
 
 function AdminHome() {
@@ -27,10 +28,6 @@ if (!isAdmin) {
           <p>Approve, reject, or review uploaded study materials.</p>
         </Link>
 
-        <Link to="/admin/replace-extend-requests" className="admin-card">
-          <h3>🔁 Replace/Extend Requests</h3>
-          <p>Handle requests to replace or extend previously uploaded content.</p>
-        </Link>
       </div>
     </div>
   );

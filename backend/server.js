@@ -9,6 +9,11 @@ const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
 const app = express();
+const ContactMessage = require('./models/ContactMessage');
+require('dotenv').config(); 
+const nodemailer = require('nodemailer');
+const Transaction = require('./models/DocTransaction');
+const crypto = require('crypto');
 // MongoDB connection
 const mongoURI = 'mongodb://localhost:27017/notesmittarDB';
 
@@ -21,6 +26,275 @@ mongoose.connect(mongoURI, {
 }).catch(err => {
   console.error('❌ MongoDB connection error:', err);
   process.exit(1);
+});
+// ✅ Setup email transporter early in the code
+let transporter;
+
+// ✅ Initialize transporter with better error handling
+const initializeEmailTransporter = () => {
+  console.log('📧 Initializing email transporter...');
+  console.log('SMTP_EMAIL:', process.env.SMTP_EMAIL);
+  console.log('SMTP_PASSWORD exists:', !!process.env.SMTP_PASSWORD);
+  console.log('ADMIN_EMAILS:', process.env.ADMIN_EMAILS);
+
+  if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
+    console.error('❌ Missing email configuration in environment variables');
+    return null;
+  }
+
+  transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.SMTP_EMAIL,
+      pass: process.env.SMTP_PASSWORD
+    }
+    // debug: true,
+    // logger: true
+  });
+
+  // Test the transporter connection
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error('❌ Email transporter verification failed:', error);
+      console.log('📧 Please check your Gmail credentials and app password');
+    } else {
+      console.log('✅ Email transporter is ready to send emails');
+    }
+  });
+
+  return transporter;
+};
+
+// Initialize transporter
+transporter = initializeEmailTransporter();
+
+// ... (rest of your MongoDB and GridFS setup code remains the same)
+
+// ✅ Enhanced contact route with extensive debugging
+app.post('/api/contact', async (req, res) => {
+  console.log('📩 ================================');
+  console.log('📩 CONTACT FORM SUBMISSION RECEIVED');
+  console.log('📩 ================================');
+  console.log('📩 Request body:', req.body);
+  console.log('📩 Request headers:', req.headers);
+  
+  const { name, email, message } = req.body;
+
+  // Basic validation
+  if (!name || !email || !message) {
+    console.log('❌ Validation failed - missing fields');
+    console.log('❌ Name:', name);
+    console.log('❌ Email:', email);
+    console.log('❌ Message:', message);
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+
+  console.log('✅ Validation passed');
+
+  try {
+    console.log('💾 Attempting to save to MongoDB...');
+    
+    // ✅ Save message to MongoDB with detailed logging
+    const contactData = { 
+      name, 
+      email, 
+      message,
+      submittedAt: new Date()
+    };
+    
+    console.log('💾 Data to save:', contactData);
+    
+    const savedMessage = await ContactMessage.create(contactData);
+    console.log('✅ Contact message saved to MongoDB successfully!');
+    console.log('✅ Saved message ID:', savedMessage._id);
+    console.log('✅ Saved message details:', savedMessage);
+
+    // ✅ Check transporter availability
+    if (!transporter) {
+      console.log('❌ Email transporter not available, trying to reinitialize...');
+      transporter = initializeEmailTransporter();
+      if (!transporter) {
+        console.log('❌ Failed to initialize email transporter');
+        return res.status(500).json({ 
+          error: 'Message saved but email service unavailable',
+          messageId: savedMessage._id 
+        });
+      }
+    }
+
+    // ✅ Check admin emails configuration
+    if (!process.env.ADMIN_EMAILS) {
+      console.log('❌ ADMIN_EMAILS not configured in environment');
+      return res.status(500).json({ 
+        error: 'Message saved but admin emails not configured',
+        messageId: savedMessage._id 
+      });
+    }
+
+    const adminEmails = process.env.ADMIN_EMAILS.split(',').map(e => e.trim());
+    console.log('📮 Admin emails configured:', adminEmails);
+
+    // ✅ Prepare email
+    const mailOptions = {
+      from: process.env.SMTP_EMAIL,
+      to: adminEmails,
+      subject: `New Contact Message from ${name}`,
+      html: `
+        <h3>New Contact Message</h3>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Message:</strong></p>
+        <div style="background: #f5f5f5; padding: 15px; border-radius: 5px;">
+          ${message.replace(/\n/g, '<br>')}
+        </div>
+        <p><em>Submitted at: ${new Date().toLocaleString()}</em></p>
+      `,
+      text: `New Contact Message\n\nName: ${name}\nEmail: ${email}\n\nMessage:\n${message}\n\nSubmitted at: ${new Date().toLocaleString()}`
+    };
+
+    console.log('📧 Email options prepared:', {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject
+    });
+
+    console.log('📤 Attempting to send email...');
+    const emailResult = await transporter.sendMail(mailOptions);
+    console.log('✅ Email sent successfully!');
+    console.log('✅ Email result:', emailResult);
+
+    res.status(201).json({ 
+      success: true,
+      message: 'Message received and emailed to admins successfully!',
+      messageId: savedMessage._id,
+      emailSent: true
+    });
+
+  } catch (error) {
+    console.error('❌ ================================');
+    console.error('❌ CONTACT FORM ERROR');
+    console.error('❌ ================================');
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
+    
+    // Handle specific error types
+    if (error.name === 'ValidationError') {
+      console.log('❌ MongoDB validation error details:', error.errors);
+      return res.status(400).json({ 
+        error: 'Invalid data format',
+        details: error.message 
+      });
+    }
+    
+    if (error.code === 'EAUTH') {
+      console.log('❌ Email authentication error');
+      return res.status(500).json({ 
+        error: 'Email authentication failed',
+        details: 'Please check email credentials'
+      });
+    }
+    
+    if (error.code === 'ECONNECTION') {
+      console.log('❌ Email connection error');
+      return res.status(500).json({ 
+        error: 'Email service connection failed',
+        details: 'Please try again later'
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to process contact form',
+      details: error.message 
+    });
+  }
+});
+
+// ✅ Add comprehensive test route
+app.get('/api/test-contact', async (req, res) => {
+  try {
+    console.log('🧪 Testing contact system...');
+    
+    // Test 1: Check ContactMessage model
+    console.log('🧪 Test 1: Checking ContactMessage model...');
+    const testMessage = {
+      name: 'Test User',
+      email: 'test@example.com',
+      message: 'This is a test message',
+      submittedAt: new Date()
+    };
+    
+    const savedTest = await ContactMessage.create(testMessage);
+    console.log('✅ Test message saved:', savedTest._id);
+    
+    // Test 2: Check email transporter
+    console.log('🧪 Test 2: Checking email transporter...');
+    if (!transporter) {
+      throw new Error('Email transporter not initialized');
+    }
+    
+    const testEmailOptions = {
+      from: process.env.SMTP_EMAIL,
+      to: process.env.SMTP_EMAIL, // Send to yourself
+      subject: 'Test Email from Contact System',
+      text: 'This is a test email to verify the contact system is working.'
+    };
+    
+    const emailResult = await transporter.sendMail(testEmailOptions);
+    console.log('✅ Test email sent:', emailResult.messageId);
+    
+    // Clean up test message
+    await ContactMessage.findByIdAndDelete(savedTest._id);
+    console.log('✅ Test message cleaned up');
+    
+    res.json({ 
+      success: true,
+      message: 'All contact system tests passed!',
+      tests: {
+        mongodbSave: true,
+        emailSend: true,
+        emailId: emailResult.messageId
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Contact system test failed:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      details: 'Contact system test failed'
+    });
+  }
+});
+
+// ✅ Add route to check recent contact messages
+app.get('/api/contact-messages', async (req, res) => {
+  try {
+    console.log('📋 Fetching recent contact messages...');
+    const messages = await ContactMessage.find()
+      .sort({ submittedAt: -1 })
+      .limit(10);
+    
+    console.log(`📋 Found ${messages.length} recent messages`);
+    
+    res.json({ 
+      success: true,
+      count: messages.length,
+      messages: messages.map(msg => ({
+        id: msg._id,
+        name: msg.name,
+        email: msg.email,
+        message: msg.message.substring(0, 100) + (msg.message.length > 100 ? '...' : ''),
+        submittedAt: msg.submittedAt
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Error fetching contact messages:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
 });
 
 // GridFS Setup using mongoose connection
@@ -202,11 +476,11 @@ app.get('/api/user-profile', async (req, res) => {
   
     const username = req.headers.username;
     
-    console.log('Profile request headers:', { 
+    // console.log('Profile request headers:', { 
 
-      username: username,
-      allHeaders: req.headers 
-    });
+    //   username: username,
+    //   allHeaders: req.headers 
+    // });
     
     if (!username) {
       return res.status(401).json({ error: 'Authorization required' });
@@ -268,10 +542,10 @@ app.post('/api/update-profile', async (req, res) => {
       fullName 
     } = req.body;
     
-    console.log('Update profile request:', { 
-      username: username,
-      bodyKeys: Object.keys(req.body)
-    });
+    // console.log('Update profile request:', { 
+    //   username: username,
+    //   bodyKeys: Object.keys(req.body)
+    // });
     
     if ( !username) {
       return res.status(401).json({ error: 'Authorization required' });
@@ -370,11 +644,11 @@ app.post('/api/change-password', async (req, res) => {
     const username = req.headers.username;
     const { currentPassword, newPassword } = req.body;
     
-    console.log('Change password request:', { 
-      username: username,
-      hasCurrentPassword: !!currentPassword,
-      hasNewPassword: !!newPassword
-    });
+    // console.log('Change password request:', { 
+    //   username: username,
+    //   hasCurrentPassword: !!currentPassword,
+    //   hasNewPassword: !!newPassword
+    // });
     
     if ( !username) {
       return res.status(401).json({ error: 'Authorization required' });
@@ -444,10 +718,10 @@ app.post('/api/upload', (req, res) => {
     }
 
     // Continue with the upload process
-    console.log('Upload request received');
-    console.log('Headers:', req.headers);
-    console.log('Body:', req.body);
-    console.log('File:', req.file ? req.file.originalname : 'No file');
+    // console.log('Upload request received');
+    // console.log('Headers:', req.headers);
+    // console.log('Body:', req.body);
+    // console.log('File:', req.file ? req.file.originalname : 'No file');
 
     try {
       if (!req.file) {
@@ -947,7 +1221,354 @@ app.get('/api/resources', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch resources' });
   }
 });
+const generateFileHash = (fileBuffer) => {
+  return crypto.createHash('sha256').update(fileBuffer).digest('hex');
+};
 
+// Helper function to check if user is admin
+const isAdmin = async (req, res, next) => {
+  try {
+    const username = req.headers.username;
+    console.log('🔐 Admin check for username:', username); // Debug log
+
+    if (!username) {
+      return res.status(401).json({ error: 'Authorization required' });
+    }
+
+    const user = await User.findOne({ username });
+    if (!user) {
+      console.log('❌ No user found');
+    } else if (!user.isAdmin) {
+      console.log('❌ User is not admin');
+    }
+
+    if (!user || !user.isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    req.adminUser = user;
+    next();
+  } catch (error) {
+    console.error('❌ Admin check failed:', error);
+    res.status(500).json({ error: 'Authorization check failed' });
+  }
+};
+
+
+app.get('/api/admin/pending-resources', isAdmin, async (req, res) => {
+  try {
+    console.log('📋 Fetching pending resources for admin review...');
+
+    const pendingResources = await Resource.find({ status: 'pending' })
+      .sort({ uploadDate: -1 })
+      .lean(); // No need to populate, since uploadedBy is a string
+
+    console.log(`📋 Found ${pendingResources.length} pending resources`);
+
+    const enrichedResources = await Promise.all(
+      pendingResources.map(async (resource) => {
+        const existingResources = await Resource.find({
+          course: resource.course,
+          semester: resource.semester,
+          subject: resource.subject,
+          type: resource.type,
+          status: 'approved',
+          _id: { $ne: resource._id }
+        }).lean();
+
+        return {
+          ...resource,
+          uploadedBy: {
+            name: resource.uploadedBy || 'Unknown',
+            username: resource.uploadedBy || 'unknown'
+          },
+          uploadedAt: resource.uploadDate || resource.createdAt || null,
+          existingResources: existingResources.map(existing => ({
+            ...existing,
+            uploadedBy: {
+              name: existing.uploadedBy || 'Unknown',
+              username: existing.uploadedBy || 'unknown'
+            },
+            uploadedAt: existing.uploadDate || existing.createdAt || null
+          }))
+        };
+      })
+    );
+
+    res.json(enrichedResources);
+  } catch (error) {
+    console.error('❌ Error fetching pending resources:', error);
+    res.status(500).json({ error: 'Failed to fetch pending resources' });
+  }
+});
+
+
+
+// Approve a resource
+app.post('/api/admin/approve-resource/:resourceId', isAdmin, async (req, res) => {
+  try {
+    const { resourceId } = req.params;
+    const { replaceResourceId } = req.body; // Optional: ID of resource to replace
+    
+    console.log(`✅ Admin ${req.adminUser.username} approving resource ${resourceId}`);
+    
+    // Find the resource
+    const resource = await Resource.findById(resourceId);
+    if (!resource) {
+      return res.status(404).json({ error: 'Resource not found' });
+    }
+    
+    // If replacing an existing resource
+    if (replaceResourceId) {
+      const oldResource = await Resource.findById(replaceResourceId);
+      if (oldResource) {
+        // Create transaction record for replacement
+        await Transaction.create({
+          type: 'docExtendOrReplace',
+          oldDocument: {
+            fileHash: oldResource.fileHash || 'legacy',
+            filename: oldResource.filename,
+            contributor: oldResource.uploadedBy,
+            relevanceScore: oldResource.relevanceScore || 0,
+            syllabusTopics: oldResource.syllabusTopics || [],
+            resourceId: oldResource._id
+          },
+          newDocument: {
+            fileHash: resource.fileHash || 'legacy',
+            filename: resource.filename,
+            contributor: resource.uploadedBy,
+            relevanceScore: resource.relevanceScore || 0,
+            syllabusTopics: resource.syllabusTopics || [],
+            unit: resource.unit ? resource.unit.join(', ') : '',
+            course: resource.course,
+            semester: resource.semester,
+            resourceId: resource._id
+          },
+          adminId: req.adminUser._id,
+          adminDecision: 'replace',
+          resourceId: resource._id,
+          filename: resource.filename,
+          course: resource.course,
+          semester: resource.semester,
+          subject: resource.subject,
+          resourceType: resource.type
+        });
+        
+        // Remove old resource
+        await Resource.findByIdAndDelete(replaceResourceId);
+        
+        // Delete file from GridFS
+        if (oldResource.fileId) {
+          try {
+            await gridfsBucket.delete(oldResource.fileId);
+          } catch (error) {
+            console.warn('Failed to delete old file from GridFS:', error);
+          }
+        }
+        
+        console.log(`🔄 Resource ${replaceResourceId} replaced with ${resourceId}`);
+      }
+    }
+    
+    // Approve the resource
+    await Resource.findByIdAndUpdate(resourceId, { status: 'approved' });
+    
+    // Create transaction record for approval
+    await Transaction.create({
+      type: 'approval',
+      adminId: req.adminUser._id,
+      adminDecision: 'approve',
+      resourceId: resource._id,
+      filename: resource.filename,
+      course: resource.course,
+      semester: resource.semester,
+      subject: resource.subject,
+      resourceType: resource.type
+    });
+    
+    // Update user's upload count if not already counted
+    const user = await User.findOne({ username: resource.uploadedBy });
+    if (user) {
+      await User.findByIdAndUpdate(user._id, { $inc: { uploadCount: 0.5 } }); // Add 0.5 more to make it 1 total
+    }
+    
+    res.json({ 
+      success: true, 
+      message: replaceResourceId ? 'Resource approved and replaced existing resource' : 'Resource approved successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error approving resource:', error);
+    res.status(500).json({ error: 'Failed to approve resource' });
+  }
+});
+
+// Reject a resource
+app.post('/api/admin/reject-resource/:resourceId', isAdmin, async (req, res) => {
+  try {
+    const { resourceId } = req.params;
+    const { reason } = req.body;
+    
+    console.log(`❌ Admin ${req.adminUser.username} rejecting resource ${resourceId}`);
+    
+    const resource = await Resource.findById(resourceId);
+    if (!resource) {
+      return res.status(404).json({ error: 'Resource not found' });
+    }
+    
+    // Update resource status
+    await Resource.findByIdAndUpdate(resourceId, { 
+      status: 'rejected',
+      rejectionReason: reason || 'No reason provided'
+    });
+    
+    // Create transaction record
+    await Transaction.create({
+      type: 'rejection',
+      adminId: req.adminUser._id,
+      adminDecision: 'reject',
+      resourceId: resource._id,
+      filename: resource.filename,
+      course: resource.course,
+      semester: resource.semester,
+      subject: resource.subject,
+      resourceType: resource.type,
+      reason: reason || 'No reason provided'
+    });
+    
+    // Delete file from GridFS
+    if (resource.fileId) {
+      try {
+        await gridfsBucket.delete(resource.fileId);
+        console.log(`🗑️ File ${resource.fileId} deleted from GridFS`);
+      } catch (error) {
+        console.warn('Failed to delete file from GridFS:', error);
+      }
+    }
+    
+    res.json({ success: true, message: 'Resource rejected successfully' });
+    
+  } catch (error) {
+    console.error('❌ Error rejecting resource:', error);
+    res.status(500).json({ error: 'Failed to reject resource' });
+  }
+});
+
+// Remove an approved resource
+app.delete('/api/admin/remove-resource/:resourceId', isAdmin, async (req, res) => {
+  try {
+    const { resourceId } = req.params;
+    const { reason } = req.body;
+    
+    console.log(`🗑️ Admin ${req.adminUser.username} removing resource ${resourceId}`);
+    
+    const resource = await Resource.findById(resourceId);
+    if (!resource) {
+      return res.status(404).json({ error: 'Resource not found' });
+    }
+    
+    // Create transaction record
+    await Transaction.create({
+      type: 'resourceRemoval',
+      adminId: req.adminUser._id,
+      adminDecision: 'remove',
+      resourceId: resource._id,
+      docFileHash: resource.fileHash || 'legacy',
+      filename: resource.filename,
+      contributor: resource.uploadedBy,
+      reason: reason || 'No reason provided',
+      course: resource.course,
+      semester: resource.semester,
+      subject: resource.subject,
+      resourceType: resource.type
+    });
+    
+    // Delete file from GridFS
+    if (resource.fileId) {
+      try {
+        await gridfsBucket.delete(resource.fileId);
+        console.log(`🗑️ File ${resource.fileId} deleted from GridFS`);
+      } catch (error) {
+        console.warn('Failed to delete file from GridFS:', error);
+      }
+    }
+    
+    // Remove resource from database
+    await Resource.findByIdAndDelete(resourceId);
+    
+    // Decrease user's upload count
+    const user = await User.findOne({ username: resource.uploadedBy });
+    if (user && user.uploadCount > 0) {
+      await User.findByIdAndUpdate(user._id, { $inc: { uploadCount: -1 } });
+    }
+    
+    res.json({ success: true, message: 'Resource removed successfully' });
+    
+  } catch (error) {
+    console.error('❌ Error removing resource:', error);
+    res.status(500).json({ error: 'Failed to remove resource' });
+  }
+});
+
+// Get admin transaction history
+app.get('/api/admin/transactions', isAdmin, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, type } = req.query;
+    
+    const query = {};
+    if (type) query.type = type;
+    
+    const transactions = await Transaction.find(query)
+      .populate('adminId', 'name username')
+      .sort({ timestamp: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .lean();
+    
+    const total = await Transaction.countDocuments(query);
+    
+    res.json({
+      transactions,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching transactions:', error);
+    res.status(500).json({ error: 'Failed to fetch transactions' });
+  }
+});
+
+// Get admin dashboard stats
+app.get('/api/admin/stats', isAdmin, async (req, res) => {
+  try {
+    const stats = await Promise.all([
+      Resource.countDocuments({ status: 'pending' }),
+      Resource.countDocuments({ status: 'approved' }),
+      Resource.countDocuments({ status: 'rejected' }),
+      User.countDocuments({}),
+      Transaction.countDocuments({ type: 'approval' }),
+      Transaction.countDocuments({ type: 'rejection' })
+    ]);
+    
+    res.json({
+      pendingResources: stats[0],
+      approvedResources: stats[1],
+      rejectedResources: stats[2],
+      totalUsers: stats[3],
+      totalApprovals: stats[4],
+      totalRejections: stats[5]
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching admin stats:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
 const PORT = 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
