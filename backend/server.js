@@ -814,13 +814,31 @@ app.post('/api/upload', (req, res) => {
       console.log('GridFS upload successful:', gridFSFile._id);
 
       // Check existing approved resources for this combination
-      const existing = await Resource.countDocuments({
-        course,
-        semester,
-        subject,
-        type,
-        status: 'approved'
-      });
+      let existing = 0;
+
+if (type.toLowerCase() === 'notes' && unit.length > 0) {
+  // Check how many existing approved notes overlap on unit level
+  const existingNotes = await Resource.find({
+    course,
+    semester,
+    subject,
+    type,
+    status: 'approved',
+    unit: { $in: unit }
+  }).lean();
+
+  existing = existingNotes.length;
+} else {
+  // Use simple count for other types like PYQs
+  existing = await Resource.countDocuments({
+    course,
+    semester,
+    subject,
+    type,
+    status: 'approved'
+  });
+}
+
 
       const status = existing < 2 ? 'approved' : 'pending';
       console.log(`Existing approved resources: ${existing}, Status: ${status}`);
