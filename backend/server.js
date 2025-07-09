@@ -1323,37 +1323,41 @@ app.post('/api/admin/approve-resource/:resourceId', isAdmin, async (req, res) =>
       const oldResource = await Resource.findById(replaceResourceId);
       if (oldResource) {
         // Create transaction record for replacement
-        await Transaction.create({
-          type: 'docExtendOrReplace',
-          oldDocument: {
-            fileHash: oldResource.fileHash || 'legacy',
-            filename: oldResource.filename,
-            contributor: oldResource.uploadedBy,
-            relevanceScore: oldResource.relevanceScore || 0,
-            syllabusTopics: oldResource.syllabusTopics || [],
-            resourceId: oldResource._id
-          },
-          newDocument: {
-            fileHash: resource.fileHash || 'legacy',
-            filename: resource.filename,
-            contributor: resource.uploadedBy,
-            relevanceScore: resource.relevanceScore || 0,
-            syllabusTopics: resource.syllabusTopics || [],
-            unit: resource.unit ? resource.unit.join(', ') : '',
-            course: resource.course,
-            semester: resource.semester,
-            resourceId: resource._id
-          },
-          adminId: req.adminUser._id,
-          adminDecision: 'replace',
-          resourceId: resource._id,
-          filename: resource.filename,
-          course: resource.course,
-          semester: resource.semester,
-          subject: resource.subject,
-          resourceType: resource.type
-        });
-        
+        try {
+  await Transaction.create({
+    type: 'docExtendOrReplace',
+    oldDocument: {
+      fileHash: oldResource.fileHash || 'legacy',
+      filename: oldResource.filename,
+      contributor: oldResource.uploadedBy,
+      relevanceScore: oldResource.relevanceScore || 0,
+      syllabusTopics: oldResource.syllabusTopics || [],
+      resourceId: oldResource._id
+    },
+    newDocument: {
+      fileHash: resource.fileHash || 'legacy',
+      filename: resource.filename,
+      contributor: resource.uploadedBy,
+      relevanceScore: resource.relevanceScore || 0,
+      syllabusTopics: resource.syllabusTopics || [],
+      unit: resource.unit ? resource.unit.join(', ') : '',
+      course: resource.course,
+      semester: resource.semester,
+      resourceId: resource._id
+    },
+    adminId: req.adminUser._id,
+    adminDecision: 'replace',
+    resourceId: resource._id,
+    filename: resource.filename,
+    course: resource.course,
+    semester: resource.semester,
+    subject: resource.subject,
+    resourceType: resource.type
+  });
+} catch (err) {
+  console.error('❌ Failed to record docExtendOrReplace transaction:', err);
+}
+
         // Remove old resource
         await Resource.findByIdAndDelete(replaceResourceId);
         
