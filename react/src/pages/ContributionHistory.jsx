@@ -126,10 +126,15 @@ export default function ContributionHistory() {
                   </div>
                 </td>
                 <td>
-                  <span className={getStatusClassName(doc.status)}>
-                    {doc.status === 'approved' ? '✅ Approved' : '⏳ Pending'}
-                  </span>
-                </td>
+  <span className={getStatusClassName(doc.status)}>
+    {doc.status === 'approved'
+      ? '✅ Approved'
+      : doc.status === 'rejected'
+      ? '❌ Rejected'
+      : '⏳ Pending'}
+  </span>
+</td>
+
                 <td>{formatDate(doc.uploadDate)}</td>
                 <td>
                   <div className="report-box-wrapper">
