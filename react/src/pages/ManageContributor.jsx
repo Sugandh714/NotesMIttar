@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import '../style/Admin.css';
 import axios from 'axios';
+import Navbar from '../component/Navbar';
 
 function ManageContributor() {
   const [contributors, setContributors] = useState([]);
@@ -54,6 +55,9 @@ function ManageContributor() {
   if (loading) return <div>Loading contributors...</div>;
 
   return (
+    <>
+    <Navbar />
+   
     <div className="admin-container">
       <h1 className="admin-header">👥 Manage Contributors</h1>
       <table className="admin-table">
@@ -96,6 +100,7 @@ function ManageContributor() {
         </tbody>
       </table>
     </div>
+     </>
   );
 }
 

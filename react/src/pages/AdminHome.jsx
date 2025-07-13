@@ -2,6 +2,7 @@ import React from 'react';
 import '../style/admin.css';
 import '../style/ManageResources.css'; // Assuming you have a CSS file for styling
 import { Navigate, Link } from 'react-router-dom';
+import Navbar from '../component/Navbar';
 
 function AdminHome() {
     const isAdmin = sessionStorage.getItem('isAdmin') === 'true';
@@ -11,6 +12,8 @@ if (!isAdmin) {
 }
 
   return (
+    <>
+    <Navbar/>
     <div className="admin-container">
       <div className="admin-header">
         <h1>📊 Admin Dashboard</h1>
@@ -30,6 +33,7 @@ if (!isAdmin) {
 
       </div>
     </div>
+    </>
   );
 }
 

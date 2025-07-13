@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, FileText, User, Calendar, Brain, CheckCircle
 import '../style/ManageResources.css'
 import { useEffect } from 'react';
 import axios from 'axios';
+import Navbar from '../component/Navbar';
 
 const AdminDashboard = () => {
   const [expandedRows, setExpandedRows] = useState({});
@@ -115,6 +116,9 @@ const AdminDashboard = () => {
   }, []);
 
   return (
+    <>
+    <Navbar />
+
     <div className="min-h-screen bg-gray-50">
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-lg shadow-lg mb-8">
         <div className="flex items-center gap-3">
@@ -281,6 +285,7 @@ const AdminDashboard = () => {
         </div>
       </div>
     </div>
+        </>
   );
 };
 
