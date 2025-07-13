@@ -30,8 +30,13 @@ function NavLogin() {
       });
 
       const data = await res.json();
-
+      if(data.user.status === 'suspended'){
+          alert('Your account has been suspended. Please contact support.');
+          sessionStorage.clear(); // Clear any partial login info
+          return;
+       }
       if (res.ok) {
+         
         sessionStorage.setItem('loggedIn', 'true');
         sessionStorage.setItem('userId', data.user._id);
         sessionStorage.setItem('username', data.user.username);

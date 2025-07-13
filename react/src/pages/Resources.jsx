@@ -87,7 +87,7 @@ function Resources() {
           }
         }
       );
-      console.log('View recorded successfully');
+     
     } catch (error) {
       console.error('Failed to record view:', error);
     }
@@ -142,7 +142,7 @@ function Resources() {
       link.click();
       document.body.removeChild(link);
       
-      console.log('Download initiated successfully');
+     
     } catch (error) {
       console.error('Error handling download:', error);
       // Fallback to direct link

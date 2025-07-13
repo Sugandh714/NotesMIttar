@@ -1,3 +1,4 @@
+
 // models/Transaction.js
 const mongoose = require('mongoose');
 
@@ -5,10 +6,34 @@ const transactionSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['docExtendOrReplace', 'resourceRemoval', 'approval', 'rejection']
+    enum: ['approval', 'rejection', 'resourceRemoval', 'docExtendOrReplace', 'contributorAction']
   },
-  
-  // For docExtendOrReplace type
+
+  // Contributor management
+  contributorUsername: String,
+
+  // Contributor reason or resource rejection/removal reason
+  reason: String,
+
+  // Contributor actions: suspend, activate, remove
+  adminDecision: {
+    type: String,
+    enum: ['approve', 'reject', 'replace', 'remove', 'suspend', 'activate'],
+    required: true
+  },
+
+  // Resources (common)
+  resourceId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Resource'
+  },
+  filename: String,
+  course: String,
+  semester: String,
+  subject: String,
+  resourceType: String,
+
+  // Resource Extension or Replacement
   oldDocument: {
     fileHash: String,
     filename: String,
@@ -17,7 +42,6 @@ const transactionSchema = new mongoose.Schema({
     syllabusTopics: [String],
     resourceId: mongoose.Schema.Types.ObjectId
   },
-  
   newDocument: {
     fileHash: String,
     filename: String,
@@ -29,38 +53,18 @@ const transactionSchema = new mongoose.Schema({
     semester: String,
     resourceId: mongoose.Schema.Types.ObjectId
   },
-  
-  // For resourceRemoval type
+
+  // Resource Removal
   docFileHash: String,
   contributor: String,
-  reason: String,
-  
-  // Common fields
+
+  // Admin
   adminId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  adminDecision: {
-    type: String,
-    enum: ['approve', 'reject', 'replace', 'remove'],
-    required: true
-  },
-  
-  // Resource being acted upon
-  resourceId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Resource',
-    required: true
-  },
-  
-  // Additional metadata
-  filename: String,
-  course: String,
-  semester: String,
-  subject: String,
-  resourceType: String,
-  
+
   timestamp: {
     type: Date,
     default: Date.now
@@ -68,10 +72,5 @@ const transactionSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
-
-// Indexes for better query performance
-transactionSchema.index({ type: 1, timestamp: -1 });
-transactionSchema.index({ adminId: 1, timestamp: -1 });
-transactionSchema.index({ resourceId: 1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);

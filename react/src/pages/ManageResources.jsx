@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, FileText, User, Calendar, Brain, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import '../style/ManageResources.css'
@@ -22,37 +23,43 @@ const AdminDashboard = () => {
     const document = pendingDocuments.find(d => d._id === docId);
     if (!document) return;
 
+    const adminUsername = sessionStorage.getItem('username');
+    if (!adminUsername) {
+      alert('Admin username not found. Please log in again.');
+      return;
+    }
+
     try {
       let url = '';
       let method = 'POST';
       let data = {};
 
       if (action === 'accept' || action === 'replace') {
-  url = `http://localhost:5000/api/admin/approve-resource/${docId}`;
-  data = action === 'replace' ? { replaceResourceId: resourceId } : {};
-}
- else if (action === 'reject') {
-        url = `http://localhost:5000/api/admin/reject-resource/${docId}`;
-        data = {
-          reason: prompt('Enter rejection reason (optional):') || 'No reason provided'
-        };
+        url = `http://localhost:5000/api/admin/approve-resource/${docId}`;
+        data = action === 'replace' ? { replaceResourceId: resourceId } : {};
+      } else if (action === 'reject') {
+          url = `http://localhost:5000/api/admin/reject-resource/${docId}`;
+          data = {
+            reason: prompt('Enter rejection reason (optional):') || 'No reason provided'
+          };
       }
 
       await axios.post(url, data, {
         headers: {
-          username: 'admin' // replace with actual admin username
+          username: adminUsername  // ✅ dynamically added username
         }
       });
 
       let message = '';
-if (action === 'accept') {
-  message = 'Resource approved successfully!';
-} else if (action === 'reject') {
-  message = 'Resource rejected successfully!';
-} else if (action === 'replace') {
-  message = 'Resource approved and replaced existing resource!';
-}
-alert(message);
+      if (action === 'accept') {
+        message = 'Resource approved successfully!';
+      } else if (action === 'reject') {
+        message = 'Resource rejected successfully!';
+      } else if (action === 'replace') {
+        message = 'Resource approved and replaced existing resource!';
+      }
+
+      alert(message);
 
       setPendingDocuments(prev => prev.filter(doc => doc._id !== docId));
     } catch (error) {

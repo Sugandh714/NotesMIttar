@@ -1,3 +1,6 @@
+
+// Update your User model (models/user.js) to include these fields:
+
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
@@ -50,7 +53,21 @@ const userSchema = new mongoose.Schema({
   registeredAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  status: {
+    type: String,
+    enum: ['active', 'suspended'],
+    default: 'active'
+  },
+  suspensionReason: {
+  type: String,
+  default: ''
+},
+
+ 
+
+  
+
 }, {
   timestamps: true,  // includes createdAt and updatedAt
   versionKey: false  // disables __v field

@@ -12,7 +12,7 @@ const app = express();
 const ContactMessage = require('./models/ContactMessage');
 require('dotenv').config(); 
 const nodemailer = require('nodemailer');
-const Transaction = require('./models/DocTransaction');
+const Transaction = require('./models/Transaction');
 const crypto = require('crypto');
 // MongoDB connection
 const mongoURI = 'mongodb://localhost:27017/notesmittarDB';
@@ -462,7 +462,8 @@ app.post('/api/login', async (req, res) => {
         username: user.username,
         email: user.email,
          isAdmin: user.isAdmin,
-        uploadCount: user.uploadCount
+        uploadCount: user.uploadCount,
+        status: user.status
       }
     });
   } catch (err) {
@@ -1242,8 +1243,11 @@ app.get('/api/resources', async (req, res) => {
 const generateFileHash = (fileBuffer) => {
   return crypto.createHash('sha256').update(fileBuffer).digest('hex');
 };
+//Adding new portion for ADMIN
+// Middleware to restrict access to admin only
+const adminUsernames = ['q', 'h', 'rahul']; // replace with your team usernames
+const AdminAction = require('./models/Transaction');
 
-// Helper function to check if user is admin
 const isAdmin = async (req, res, next) => {
   try {
     const username = req.headers.username;
@@ -1272,7 +1276,77 @@ const isAdmin = async (req, res, next) => {
   }
 };
 
+// 1)For ManageContributors
+app.get('/api/admin/contributors', isAdmin, async (req, res) => {
+  try {
+    const contributors = await User.find(
+      { uploadCount: { $gt: 0 } },
+      'name username uploadCount status suspensionReason'
+    ); // select only the required fields
 
+    res.json(contributors);
+  } catch (err) {
+    console.error('Error fetching contributors:', err);
+    res.status(500).json({ error: 'Failed to fetch contributors' });
+  }
+});
+
+
+app.post('/api/admin/contributor/suspend', isAdmin, async (req, res) => {
+  try {
+    const { username, reason } = req.body;
+    const adminUser = req.adminUser;
+
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const isSuspending = user.status === 'active';
+    user.status = isSuspending ? 'suspended' : 'active';
+    user.suspensionReason = isSuspending ? (reason || 'No reason provided') : '';
+    await user.save();
+
+    const log = new Transaction({
+      type: 'contributorAction',
+      adminId: adminUser._id,
+      adminDecision: isSuspending ? 'suspend' : 'activate',
+      contributorUsername: username,
+      reason: isSuspending ? (reason || 'No reason provided') : ''
+    });
+    await log.save();
+
+    res.json({ message: `User ${user.status} successfully`, user });
+  } catch (err) {
+    console.error('Error suspending contributor:', err);
+    res.status(500).json({ error: 'Failed to update contributor status' });
+  }
+});
+
+app.get('/api/admin/actions', isAdmin, async (req, res) => {
+  try {
+    const actions = await AdminAction.find().sort({ timestamp: -1 });
+    res.json(actions);
+  } catch (err) {
+    console.error('Error fetching admin actions:', err);
+    res.status(500).json({ error: 'Failed to fetch admin actions' });
+  }
+});
+
+app.post('/api/admin/contributor/reason', isAdmin, async (req, res) => {
+  try {
+    const { username, reason } = req.body;
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    user.suspensionReason = reason || '';
+    await user.save();
+
+    res.json({ message: 'Suspension reason updated', user });
+  } catch (err) {
+    console.error('Error updating reason:', err);
+    res.status(500).json({ error: 'Failed to update reason' });
+  }
+});
+// MANAGE RESOURCES 
 app.get('/api/admin/pending-resources', isAdmin, async (req, res) => {
   try {
     console.log('📋 Fetching pending resources for admin review...');
@@ -1590,7 +1664,11 @@ app.get('/api/admin/stats', isAdmin, async (req, res) => {
     console.error('❌ Error fetching admin stats:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
   }
-});
+}); 
+
+
+
+
 const PORT = 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
