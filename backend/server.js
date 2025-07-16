@@ -4,18 +4,20 @@ const bodyParser = require('body-parser');
 const bcrypt = require('bcryptjs');
 const Resource = require('./models/resource');
 const User = require('./models/user');
-const ResourceView = require('./models/Resource_Views'); 
+const ResourceView = require('./models/Resource_Views');
 const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
 const app = express();
 const ContactMessage = require('./models/ContactMessage');
-require('dotenv').config(); 
+require('dotenv').config();
 const nodemailer = require('nodemailer');
 const Transaction = require('./models/Transaction');
 const crypto = require('crypto');
 // MongoDB connection
 const mongoURI = 'mongodb://localhost:27017/notesmittarDB';
+const SessionLog = require('./models/SessionLog');
+const { v4: uuidv4 } = require('uuid');
 
 // Connect to MongoDB
 mongoose.connect(mongoURI, {
@@ -77,7 +79,7 @@ app.post('/api/contact', async (req, res) => {
   console.log('📩 ================================');
   console.log('📩 Request body:', req.body);
   console.log('📩 Request headers:', req.headers);
-  
+
   const { name, email, message } = req.body;
 
   // Basic validation
@@ -93,17 +95,17 @@ app.post('/api/contact', async (req, res) => {
 
   try {
     console.log('💾 Attempting to save to MongoDB...');
-    
+
     // ✅ Save message to MongoDB with detailed logging
-    const contactData = { 
-      name, 
-      email, 
+    const contactData = {
+      name,
+      email,
       message,
       submittedAt: new Date()
     };
-    
+
     console.log('💾 Data to save:', contactData);
-    
+
     const savedMessage = await ContactMessage.create(contactData);
     console.log('✅ Contact message saved to MongoDB successfully!');
     console.log('✅ Saved message ID:', savedMessage._id);
@@ -115,9 +117,9 @@ app.post('/api/contact', async (req, res) => {
       transporter = initializeEmailTransporter();
       if (!transporter) {
         console.log('❌ Failed to initialize email transporter');
-        return res.status(500).json({ 
+        return res.status(500).json({
           error: 'Message saved but email service unavailable',
-          messageId: savedMessage._id 
+          messageId: savedMessage._id
         });
       }
     }
@@ -125,9 +127,9 @@ app.post('/api/contact', async (req, res) => {
     // ✅ Check admin emails configuration
     if (!process.env.ADMIN_EMAILS) {
       console.log('❌ ADMIN_EMAILS not configured in environment');
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Message saved but admin emails not configured',
-        messageId: savedMessage._id 
+        messageId: savedMessage._id
       });
     }
 
@@ -163,7 +165,7 @@ app.post('/api/contact', async (req, res) => {
     console.log('✅ Email sent successfully!');
     console.log('✅ Email result:', emailResult);
 
-    res.status(201).json({ 
+    res.status(201).json({
       success: true,
       message: 'Message received and emailed to admins successfully!',
       messageId: savedMessage._id,
@@ -177,35 +179,35 @@ app.post('/api/contact', async (req, res) => {
     console.error('❌ Error name:', error.name);
     console.error('❌ Error message:', error.message);
     console.error('❌ Error stack:', error.stack);
-    
+
     // Handle specific error types
     if (error.name === 'ValidationError') {
       console.log('❌ MongoDB validation error details:', error.errors);
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Invalid data format',
-        details: error.message 
+        details: error.message
       });
     }
-    
+
     if (error.code === 'EAUTH') {
       console.log('❌ Email authentication error');
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Email authentication failed',
         details: 'Please check email credentials'
       });
     }
-    
+
     if (error.code === 'ECONNECTION') {
       console.log('❌ Email connection error');
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Email service connection failed',
         details: 'Please try again later'
       });
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: 'Failed to process contact form',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -214,7 +216,7 @@ app.post('/api/contact', async (req, res) => {
 app.get('/api/test-contact', async (req, res) => {
   try {
     console.log('🧪 Testing contact system...');
-    
+
     // Test 1: Check ContactMessage model
     console.log('🧪 Test 1: Checking ContactMessage model...');
     const testMessage = {
@@ -223,31 +225,31 @@ app.get('/api/test-contact', async (req, res) => {
       message: 'This is a test message',
       submittedAt: new Date()
     };
-    
+
     const savedTest = await ContactMessage.create(testMessage);
     console.log('✅ Test message saved:', savedTest._id);
-    
+
     // Test 2: Check email transporter
     console.log('🧪 Test 2: Checking email transporter...');
     if (!transporter) {
       throw new Error('Email transporter not initialized');
     }
-    
+
     const testEmailOptions = {
       from: process.env.SMTP_EMAIL,
       to: process.env.SMTP_EMAIL, // Send to yourself
       subject: 'Test Email from Contact System',
       text: 'This is a test email to verify the contact system is working.'
     };
-    
+
     const emailResult = await transporter.sendMail(testEmailOptions);
     console.log('✅ Test email sent:', emailResult.messageId);
-    
+
     // Clean up test message
     await ContactMessage.findByIdAndDelete(savedTest._id);
     console.log('✅ Test message cleaned up');
-    
-    res.json({ 
+
+    res.json({
       success: true,
       message: 'All contact system tests passed!',
       tests: {
@@ -256,10 +258,10 @@ app.get('/api/test-contact', async (req, res) => {
         emailId: emailResult.messageId
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Contact system test failed:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: error.message,
       details: 'Contact system test failed'
@@ -274,10 +276,10 @@ app.get('/api/contact-messages', async (req, res) => {
     const messages = await ContactMessage.find()
       .sort({ submittedAt: -1 })
       .limit(10);
-    
+
     console.log(`📋 Found ${messages.length} recent messages`);
-    
-    res.json({ 
+
+    res.json({
       success: true,
       count: messages.length,
       messages: messages.map(msg => ({
@@ -290,12 +292,45 @@ app.get('/api/contact-messages', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error fetching contact messages:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: error.message 
+      error: error.message
     });
   }
 });
+//SESSION LOGGING
+
+async function logSessionAction(req, category, details) {
+  if (!req.sessionInfo || !req.sessionInfo.sessionID) {
+    console.warn('⚠️ Session info missing in request.');
+    return;
+  }
+
+  const validCategories = ['viewResources', 'uploadResources', 'manageContributor', 'manageResources'];
+  if (!validCategories.includes(category)) {
+    console.warn('❌ Invalid log category:', category);
+    return;
+  }
+
+  try {
+    const logEntry = {
+      timestamp: new Date(),
+      details
+    };
+
+    const result = await SessionLog.updateOne(
+      { sessionID: req.sessionInfo.sessionID },
+      { $push: { [category]: logEntry } }
+    );
+
+    if (result.modifiedCount === 0) {
+      console.warn('⚠️ No session found to update for logging:', req.sessionInfo.sessionID);
+    }
+  } catch (error) {
+    console.error('❌ Failed to log session action:', error);
+  }
+}
+
 
 // GridFS Setup using mongoose connection
 let gridfsBucket;
@@ -343,6 +378,24 @@ app.use(cors({
 }));
 
 app.use(bodyParser.json());
+app.use((req, res, next) => {
+  const sessionID = req.headers['session-id'];
+  const sessionUserID = req.headers['userid'];
+  const sessionUsername = req.headers['username'];
+  const sessionRole = req.headers['role'];
+
+  if (sessionID && sessionUserID && sessionRole) {
+    req.sessionInfo = {
+      sessionID,
+      sessionUserID,
+      sessionUsername,
+      sessionRole,
+      sessionTimestamp: new Date() // Used only at creation
+    };
+  }
+
+  next();
+});
 
 // Helper function to upload to GridFS
 const uploadToGridFS = (fileBuffer, filename, metadata) => {
@@ -445,6 +498,7 @@ app.post('/api/login', async (req, res) => {
       ]
     });
 
+
     if (!user) {
       return res.status(400).json({ error: 'User not found' });
     }
@@ -453,53 +507,121 @@ app.post('/api/login', async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-
+    const sessionID = uuidv4();
+req.sessionInfo = {
+  sessionID,
+  sessionUserID: user._id.toString(),
+  sessionUsername: user.username,
+  sessionRole: user.isAdmin ? 'admin' : 'user',
+  sessionTimestamp: new Date()
+};
+await SessionLog.create({ ...req.sessionInfo, actions: [] });
     res.status(200).json({
-      message: 'Login successful',
-      user: {
-        _id: user._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-         isAdmin: user.isAdmin,
-        uploadCount: user.uploadCount,
-        status: user.status
-      }
-    });
+  message: 'Login successful',
+  sessionID, // ✅ include this
+  user: {
+    _id: user._id,
+    name: user.name,
+    username: user.username,
+    email: user.email,
+    isAdmin: user.isAdmin,
+    uploadCount: user.uploadCount,
+    status: user.status
+  }
+});
+
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server error during login' });
   }
 });
+// // Route to store a new session block
+// app.post('/api/log-session', async (req, res) => {
+//   try {
+//     const { sessionID, sessionUserID,sessionUsername, sessionRole, sessionTimestamp, actions } = req.body;
+
+//     const sessionLog = new SessionLog({
+//       sessionID,
+//       sessionUserID,
+//       sessionUsername,
+//       sessionRole,
+//       sessionTimestamp: new Date(sessionTimestamp),
+//       actions
+//     });
+
+//     await sessionLog.save();
+//     res.status(201).json({ message: 'Session logged successfully' });
+//   } catch (err) {
+//     console.error('❌ Error logging session:', err);
+//     res.status(500).json({ error: 'Server error' });
+//   }
+// });
+
+// Route to get file history (like blockchain query)
+app.get('/api/file-history/:resourceID', async (req, res) => {
+  try {
+    const { resourceID } = req.params;
+
+    const matchingActions = [];
+
+    const sessions = await SessionLog.find();
+
+    for (const session of sessions) {
+      for (const action of session.actions) {
+        const d = action.details;
+        if (
+          d?.resourceID === resourceID ||
+          d?.oldDocument?.resourceID === resourceID ||
+          d?.newDocument?.resourceID === resourceID
+        ) {
+          matchingActions.push({
+            sessionID: session.sessionID,
+            sessionUserID: session.sessionUserID,
+            sessionUsername: session.sessionUsername,
+            sessionRole: session.sessionRole,
+            actionType: action.actionType,
+            timestamp: action.timestamp,
+            details: action.details
+          });
+        }
+      }
+    }
+
+    res.json({ resourceID, history: matchingActions });
+  } catch (err) {
+    console.error('❌ Error fetching file history:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 // Fixed Get user profile route
 app.get('/api/user-profile', async (req, res) => {
   try {
-  
+
     const username = req.headers.username;
-    
+
     // console.log('Profile request headers:', { 
 
     //   username: username,
     //   allHeaders: req.headers 
     // });
-    
+
     if (!username) {
       return res.status(401).json({ error: 'Authorization required' });
     }
-    
+
     let userIdentifier = username;
-    
-    
+
+
     if (!userIdentifier) {
       return res.status(401).json({ error: 'Username required' });
     }
-    
+
     const user = await User.findOne({ username: userIdentifier });
-    
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     // Map backend fields to frontend expected fields
     res.json({
       _id: user._id,
@@ -521,7 +643,7 @@ app.get('/api/user-profile', async (req, res) => {
       isAdmin: user.isAdmin || false,
       createdAt: user.createdAt
     });
-    
+
   } catch (error) {
     console.error('Get user profile error:', error);
     res.status(500).json({ error: 'Failed to fetch user profile' });
@@ -532,42 +654,42 @@ app.get('/api/user-profile', async (req, res) => {
 app.post('/api/update-profile', async (req, res) => {
   try {
     const username = req.headers.username;
-    const { 
-      contact, 
+    const {
+      contact,
       phone, // Handle both contact and phone
-      avatar, 
-      description, 
-      semester, 
-      branch, 
+      avatar,
+      description,
+      semester,
+      branch,
       email,
-      fullName 
+      fullName
     } = req.body;
-    
+
     // console.log('Update profile request:', { 
     //   username: username,
     //   bodyKeys: Object.keys(req.body)
     // });
-    
-    if ( !username) {
+
+    if (!username) {
       return res.status(401).json({ error: 'Authorization required' });
     }
-    
+
     let userIdentifier = username;
-    
-    
-    
+
+
+
     if (!userIdentifier) {
       return res.status(401).json({ error: 'Username required' });
     }
-    
+
     const user = await User.findOne({ username: userIdentifier });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     // Prepare update object with field mapping
     const updateData = {};
-    
+
     if (contact !== undefined) updateData.contact = contact;
     if (phone !== undefined) updateData.contact = phone; // Map phone to contact
     if (avatar !== undefined) updateData.avatar = avatar;
@@ -576,13 +698,13 @@ app.post('/api/update-profile', async (req, res) => {
     if (branch !== undefined) updateData.branch = branch;
     if (email !== undefined) updateData.email = email;
     if (fullName !== undefined) updateData.name = fullName; // Map fullName to name
-    
+
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
       updateData,
       { new: true }
     );
-    
+
     res.json({
       message: 'Profile updated successfully',
       user: {
@@ -644,34 +766,34 @@ app.post('/api/change-password', async (req, res) => {
   try {
     const username = req.headers.username;
     const { currentPassword, newPassword } = req.body;
-    
+
     // console.log('Change password request:', { 
     //   username: username,
     //   hasCurrentPassword: !!currentPassword,
     //   hasNewPassword: !!newPassword
     // });
-    
-    if ( !username) {
+
+    if (!username) {
       return res.status(401).json({ error: 'Authorization required' });
     }
-    
+
     let userIdentifier = username;
 
-    
+
     if (!userIdentifier) {
       return res.status(401).json({ error: 'Username required' });
     }
-    
+
     const user = await User.findOne({ username: userIdentifier });
     if (!user) return res.status(404).json({ error: 'User not found' });
-    
+
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) return res.status(400).json({ error: 'Current password is incorrect' });
-    
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
     await user.save();
-    
+
     res.json({ message: 'Password updated successfully' });
   } catch (error) {
     console.error('Password change error:', error);
@@ -817,28 +939,28 @@ app.post('/api/upload', (req, res) => {
       // Check existing approved resources for this combination
       let existing = 0;
 
-if (type.toLowerCase() === 'notes' && unit.length > 0) {
-  // Check how many existing approved notes overlap on unit level
-  const existingNotes = await Resource.find({
-    course,
-    semester,
-    subject,
-    type,
-    status: 'approved',
-    unit: { $in: unit }
-  }).lean();
+      if (type.toLowerCase() === 'notes' && unit.length > 0) {
+        // Check how many existing approved notes overlap on unit level
+        const existingNotes = await Resource.find({
+          course,
+          semester,
+          subject,
+          type,
+          status: 'approved',
+          unit: { $in: unit }
+        }).lean();
 
-  existing = existingNotes.length;
-} else {
-  // Use simple count for other types like PYQs
-  existing = await Resource.countDocuments({
-    course,
-    semester,
-    subject,
-    type,
-    status: 'approved'
-  });
-}
+        existing = existingNotes.length;
+      } else {
+        // Use simple count for other types like PYQs
+        existing = await Resource.countDocuments({
+          course,
+          semester,
+          subject,
+          type,
+          status: 'approved'
+        });
+      }
 
 
       const status = existing < 2 ? 'approved' : 'pending';
@@ -874,6 +996,15 @@ if (type.toLowerCase() === 'notes' && unit.length > 0) {
 
       console.log(`✅ Upload completed: ${filename}, Status: ${status}`);
       console.log(`✅ Updated uploadCount for user: ${existingUser.username}`);
+      console.log('📦 Session Info:', req.sessionInfo);
+      console.log('📥 Calling logSessionAction for Upload...');
+      await logSessionAction(req, 'uploadResources', {
+  resourceID: resource._id.toString(),
+  filename: resource.filename,
+  status: resource.status,
+  uploadTimestamp: new Date()
+});
+
 
       res.status(201).json({
         message: `Upload ${status}! Your contribution has been ${status === 'approved' ? 'accepted' : 'submitted for review'}.`,
@@ -958,6 +1089,13 @@ app.post('/api/record-view/:resourceId', async (req, res) => {
         { $inc: { viewCount: 1 } },
         { new: true }
       );
+      await logSessionAction(req, 'viewResources', {
+  resourceID: resource._id.toString(),
+  filename: resource.filename,
+  ipAddress: getUserIP(req),
+  viewedAt: new Date()
+});
+
 
       console.log(`✅ View recorded for resource ${resourceId} by user ${user.username}`);
       res.json({ success: true, message: 'View recorded' });
@@ -1267,8 +1405,15 @@ const isAdmin = async (req, res, next) => {
     if (!user || !user.isAdmin) {
       return res.status(403).json({ error: 'Admin access required' });
     }
-
+    
     req.adminUser = user;
+    req.sessionInfo = {
+  sessionID: req.headers['session-id'],
+  sessionUserID: req.adminUser._id.toString(),
+  sessionUsername: req.adminUser.username,
+  sessionRole: 'admin'
+};
+
     next();
   } catch (error) {
     console.error('❌ Admin check failed:', error);
@@ -1304,6 +1449,12 @@ app.post('/api/admin/contributor/suspend', isAdmin, async (req, res) => {
     user.status = isSuspending ? 'suspended' : 'active';
     user.suspensionReason = isSuspending ? (reason || 'No reason provided') : '';
     await user.save();
+    await logSessionAction(req, 'manageContributor', {
+  contributorUsername: user.username,
+  actionType: isSuspending ? 'SUSPEND' : 'ACTIVATE',
+  reason: reason || 'No reason provided'
+});
+
 
     const log = new Transaction({
       type: 'contributorAction',
@@ -1339,6 +1490,12 @@ app.post('/api/admin/contributor/reason', isAdmin, async (req, res) => {
 
     user.suspensionReason = reason || '';
     await user.save();
+    await logSessionAction(req, 'manageContributor', {
+  contributorUsername: user.username,
+  actionType: isSuspending ? 'SUSPEND' : 'ACTIVATE',
+  reason: reason || 'No reason provided'
+});
+
 
     res.json({ message: 'Suspension reason updated', user });
   } catch (err) {
@@ -1386,6 +1543,15 @@ app.get('/api/admin/pending-resources', isAdmin, async (req, res) => {
         };
       })
     );
+    await logSessionAction(req, 'manageResources', {
+  type: 'APPROVE',
+  resourceID: resource._id.toString(),
+  filename: resource.filename,
+  contributor: resource.uploadedBy,
+   relevanceScore: resource.relevanceScore || 0
+});
+
+    
 
     res.json(enrichedResources);
   } catch (error) {
@@ -1401,58 +1567,76 @@ app.post('/api/admin/approve-resource/:resourceId', isAdmin, async (req, res) =>
   try {
     const { resourceId } = req.params;
     const { replaceResourceId } = req.body; // Optional: ID of resource to replace
-    
+
     console.log(`✅ Admin ${req.adminUser.username} approving resource ${resourceId}`);
-    
+
     // Find the resource
     const resource = await Resource.findById(resourceId);
     if (!resource) {
       return res.status(404).json({ error: 'Resource not found' });
     }
-    
+
     // If replacing an existing resource
     if (replaceResourceId) {
       const oldResource = await Resource.findById(replaceResourceId);
+
       if (oldResource) {
         // Create transaction record for replacement
         try {
-  await Transaction.create({
-    type: 'docExtendOrReplace',
-    oldDocument: {
-      fileHash: oldResource.fileHash || 'legacy',
-      filename: oldResource.filename,
-      contributor: oldResource.uploadedBy,
-      relevanceScore: oldResource.relevanceScore || 0,
-      syllabusTopics: oldResource.syllabusTopics || [],
-      resourceId: oldResource._id
-    },
-    newDocument: {
-      fileHash: resource.fileHash || 'legacy',
-      filename: resource.filename,
-      contributor: resource.uploadedBy,
-      relevanceScore: resource.relevanceScore || 0,
-      syllabusTopics: resource.syllabusTopics || [],
-      unit: resource.unit ? resource.unit.join(', ') : '',
-      course: resource.course,
-      semester: resource.semester,
-      resourceId: resource._id
-    },
-    adminId: req.adminUser._id,
-    adminDecision: 'replace',
-    resourceId: resource._id,
+          await Transaction.create({
+            type: 'docExtendOrReplace',
+            oldDocument: {
+              fileHash: oldResource.fileHash || 'legacy',
+              filename: oldResource.filename,
+              contributor: oldResource.uploadedBy,
+              relevanceScore: oldResource.relevanceScore || 0,
+              syllabusTopics: oldResource.syllabusTopics || [],
+              resourceId: oldResource._id
+            },
+            newDocument: {
+              fileHash: resource.fileHash || 'legacy',
+              filename: resource.filename,
+              contributor: resource.uploadedBy,
+              relevanceScore: resource.relevanceScore || 0,
+              syllabusTopics: resource.syllabusTopics || [],
+              unit: resource.unit ? resource.unit.join(', ') : '',
+              course: resource.course,
+              semester: resource.semester,
+              resourceId: resource._id
+            },
+            adminId: req.adminUser._id,
+            adminDecision: 'replace',
+            resourceId: resource._id,
+            filename: resource.filename,
+            course: resource.course,
+            semester: resource.semester,
+            subject: resource.subject,
+            resourceType: resource.type
+          });
+          await logSessionAction(req, 'manageResources', {
+  type: 'REPLACE',
+  oldDocument: {
+    resourceID: oldResource._id.toString(),
+    filename: oldResource.filename,
+    contributor: oldResource.uploadedBy,
+     relevanceScore: oldResource.relevanceScore || 0
+  },
+  newDocument: {
+    resourceID: resource._id.toString(),
     filename: resource.filename,
-    course: resource.course,
-    semester: resource.semester,
-    subject: resource.subject,
-    resourceType: resource.type
-  });
-} catch (err) {
-  console.error('❌ Failed to record docExtendOrReplace transaction:', err);
-}
+    contributor: resource.uploadedBy,
+     relevanceScore: oldResource.relevanceScore || 0
+  }
+});
+
+
+        } catch (err) {
+          console.error('❌ Failed to record docExtendOrReplace transaction:', err);
+        }
 
         // Remove old resource
         await Resource.findByIdAndDelete(replaceResourceId);
-        
+
         // Delete file from GridFS
         if (oldResource.fileId) {
           try {
@@ -1461,14 +1645,14 @@ app.post('/api/admin/approve-resource/:resourceId', isAdmin, async (req, res) =>
             console.warn('Failed to delete old file from GridFS:', error);
           }
         }
-        
+
         console.log(`🔄 Resource ${replaceResourceId} replaced with ${resourceId}`);
       }
     }
-    
+
     // Approve the resource
     await Resource.findByIdAndUpdate(resourceId, { status: 'approved' });
-    
+
     // Create transaction record for approval
     await Transaction.create({
       type: 'approval',
@@ -1481,18 +1665,18 @@ app.post('/api/admin/approve-resource/:resourceId', isAdmin, async (req, res) =>
       subject: resource.subject,
       resourceType: resource.type
     });
-    
+
     // Update user's upload count if not already counted
     const user = await User.findOne({ username: resource.uploadedBy });
     if (user) {
       await User.findByIdAndUpdate(user._id, { $inc: { uploadCount: 0.5 } }); // Add 0.5 more to make it 1 total
     }
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: replaceResourceId ? 'Resource approved and replaced existing resource' : 'Resource approved successfully'
     });
-    
+
   } catch (error) {
     console.error('❌ Error approving resource:', error);
     res.status(500).json({ error: 'Failed to approve resource' });
@@ -1504,20 +1688,20 @@ app.post('/api/admin/reject-resource/:resourceId', isAdmin, async (req, res) => 
   try {
     const { resourceId } = req.params;
     const { reason } = req.body;
-    
+
     console.log(`❌ Admin ${req.adminUser.username} rejecting resource ${resourceId}`);
-    
+
     const resource = await Resource.findById(resourceId);
     if (!resource) {
       return res.status(404).json({ error: 'Resource not found' });
     }
-    
+
     // Update resource status
-    await Resource.findByIdAndUpdate(resourceId, { 
+    await Resource.findByIdAndUpdate(resourceId, {
       status: 'rejected',
       rejectionReason: reason || 'No reason provided'
     });
-    
+
     // Create transaction record
     await Transaction.create({
       type: 'rejection',
@@ -1531,7 +1715,7 @@ app.post('/api/admin/reject-resource/:resourceId', isAdmin, async (req, res) => 
       resourceType: resource.type,
       reason: reason || 'No reason provided'
     });
-    
+
     // Delete file from GridFS
     if (resource.fileId) {
       try {
@@ -1541,9 +1725,17 @@ app.post('/api/admin/reject-resource/:resourceId', isAdmin, async (req, res) => 
         console.warn('Failed to delete file from GridFS:', error);
       }
     }
-    
+    await logSessionAction(req, 'ManageResource', {
+  type: 'REJECT',
+  filename: resource.filename,
+  resourceID: resource._id.toString(),
+  contributor: resource.uploadedBy,
+  relevanceScore: resource.relevanceScore || 0,
+  reason: reason || 'No reason provided'
+});
+
     res.json({ success: true, message: 'Resource rejected successfully' });
-    
+
   } catch (error) {
     console.error('❌ Error rejecting resource:', error);
     res.status(500).json({ error: 'Failed to reject resource' });
@@ -1555,14 +1747,14 @@ app.delete('/api/admin/remove-resource/:resourceId', isAdmin, async (req, res) =
   try {
     const { resourceId } = req.params;
     const { reason } = req.body;
-    
+
     console.log(`🗑️ Admin ${req.adminUser.username} removing resource ${resourceId}`);
-    
+
     const resource = await Resource.findById(resourceId);
     if (!resource) {
       return res.status(404).json({ error: 'Resource not found' });
     }
-    
+
     // Create transaction record
     await Transaction.create({
       type: 'resourceRemoval',
@@ -1578,28 +1770,34 @@ app.delete('/api/admin/remove-resource/:resourceId', isAdmin, async (req, res) =
       subject: resource.subject,
       resourceType: resource.type
     });
-    
+
     // Delete file from GridFS
     if (resource.fileId) {
       try {
+        
         await gridfsBucket.delete(resource.fileId);
         console.log(`🗑️ File ${resource.fileId} deleted from GridFS`);
       } catch (error) {
         console.warn('Failed to delete file from GridFS:', error);
       }
     }
-    
+
     // Remove resource from database
     await Resource.findByIdAndDelete(resourceId);
-    
+
     // Decrease user's upload count
     const user = await User.findOne({ username: resource.uploadedBy });
     if (user && user.uploadCount > 0) {
       await User.findByIdAndUpdate(user._id, { $inc: { uploadCount: -1 } });
     }
-    
+    await logSessionAction(req, 'AdminAction', {
+  targetUsername: resource.uploadedBy,
+  actionType: 'REMOVE_RESOURCE',
+  reason: reason || 'No reason provided'
+});
+
     res.json({ success: true, message: 'Resource removed successfully' });
-    
+
   } catch (error) {
     console.error('❌ Error removing resource:', error);
     res.status(500).json({ error: 'Failed to remove resource' });
@@ -1610,19 +1808,19 @@ app.delete('/api/admin/remove-resource/:resourceId', isAdmin, async (req, res) =
 app.get('/api/admin/transactions', isAdmin, async (req, res) => {
   try {
     const { page = 1, limit = 20, type } = req.query;
-    
+
     const query = {};
     if (type) query.type = type;
-    
+
     const transactions = await Transaction.find(query)
       .populate('adminId', 'name username')
       .sort({ timestamp: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .lean();
-    
+
     const total = await Transaction.countDocuments(query);
-    
+
     res.json({
       transactions,
       pagination: {
@@ -1632,7 +1830,7 @@ app.get('/api/admin/transactions', isAdmin, async (req, res) => {
         pages: Math.ceil(total / limit)
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Error fetching transactions:', error);
     res.status(500).json({ error: 'Failed to fetch transactions' });
@@ -1650,7 +1848,7 @@ app.get('/api/admin/stats', isAdmin, async (req, res) => {
       Transaction.countDocuments({ type: 'approval' }),
       Transaction.countDocuments({ type: 'rejection' })
     ]);
-    
+
     res.json({
       pendingResources: stats[0],
       approvedResources: stats[1],
@@ -1659,12 +1857,12 @@ app.get('/api/admin/stats', isAdmin, async (req, res) => {
       totalApprovals: stats[4],
       totalRejections: stats[5]
     });
-    
+
   } catch (error) {
     console.error('❌ Error fetching admin stats:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
   }
-}); 
+});
 
 
 

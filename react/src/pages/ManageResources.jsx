@@ -47,7 +47,10 @@ const AdminDashboard = () => {
 
       await axios.post(url, data, {
         headers: {
-          username: adminUsername  // ✅ dynamically added username
+          'session-id': sessionStorage.getItem('sessionID'),
+    'userid': sessionStorage.getItem('userId'),
+    'username': sessionStorage.getItem('username'),
+    'role': sessionStorage.getItem('isAdmin') === 'true' ? 'admin' : 'user'
         }
       });
 

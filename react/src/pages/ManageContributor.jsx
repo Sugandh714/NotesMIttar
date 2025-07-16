@@ -12,7 +12,14 @@ function ManageContributor() {
   const fetchContributors = async () => {
     try {
       const res = await axios.get('http://localhost:5000/api/admin/contributors', {
-        headers: { username: sessionStorage.getItem('username') }
+       headers: {
+  'session-id': sessionStorage.getItem('sessionID'),
+  'userid': sessionStorage.getItem('userId'),
+  'username': sessionStorage.getItem('username'),
+  'role': sessionStorage.getItem('isAdmin') === 'true' ? 'admin' : 'user',
+  'Content-Type': 'application/json'
+}
+
       });
       setContributors(res.data || []);
     } catch (err) {
@@ -37,7 +44,14 @@ function ManageContributor() {
         username,
         reason: reason || ''
       }, {
-        headers: { username: sessionStorage.getItem('username') }
+      headers: {
+  'session-id': sessionStorage.getItem('sessionID'),
+  'userid': sessionStorage.getItem('userId'),
+  'username': sessionStorage.getItem('username'),
+  'role': sessionStorage.getItem('isAdmin') === 'true' ? 'admin' : 'user',
+  'Content-Type': 'application/json'
+}
+
       });
 
       alert(`User ${username} ${res.data.user.status === 'suspended' ? 'suspended' : 're-activated'} successfully.`);

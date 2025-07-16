@@ -81,9 +81,11 @@ function Resources() {
         {},
         {
           headers: {
-            username: credentials.username,
-            email: credentials.email,
-            'session-id': sessionStorage.getItem('sessionId') || Math.random().toString(36),
+            'session-id': sessionStorage.getItem('sessionID'),
+  'userid': sessionStorage.getItem('userId'),
+  'username': sessionStorage.getItem('username'),
+  'role': sessionStorage.getItem('isAdmin') === 'true' ? 'admin' : 'user',
+  'Content-Type': 'application/json'
           }
         }
       );

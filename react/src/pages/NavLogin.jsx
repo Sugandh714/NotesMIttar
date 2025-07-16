@@ -36,12 +36,13 @@ function NavLogin() {
           return;
        }
       if (res.ok) {
-         
+         const sessionID = crypto.randomUUID();
         sessionStorage.setItem('loggedIn', 'true');
         sessionStorage.setItem('userId', data.user._id);
         sessionStorage.setItem('username', data.user.username);
         sessionStorage.setItem('email', data.user.email);
         sessionStorage.setItem('name', data.user.name);
+              sessionStorage.setItem('sessionID', sessionID);
           sessionStorage.setItem('user', JSON.stringify({
     username: data.user.username,
     email: data.user.email

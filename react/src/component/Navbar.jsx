@@ -33,8 +33,12 @@ export default function Navbar() {
       const response = await fetch('http://localhost:5000/api/user-profile', {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-          'username': username
+          'session-id': sessionStorage.getItem('sessionID'),
+  'userid': sessionStorage.getItem('userId'),
+  'username': sessionStorage.getItem('username'),
+  'role': sessionStorage.getItem('isAdmin') === 'true' ? 'admin' : 'user',
+          'Content-Type': 'application/json'
+          
         }
       });
 

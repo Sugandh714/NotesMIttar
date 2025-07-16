@@ -27,21 +27,21 @@ function Login() {
       });
 
       const data = await res.json();
-      console.log(data.user.status);
     if(data.user.status === 'suspended'){
           alert('Your account has been suspended. Please contact support.');
           sessionStorage.clear(); // Clear any partial login info
           return;
        }
       if (res.ok) {
-         
+        const sessionID = data.sessionID; 
+        sessionStorage.setItem('sessionID', sessionID);
         // Store basic user info
         sessionStorage.setItem('loggedIn', 'true');
         sessionStorage.setItem('userId', data.user._id);
         sessionStorage.setItem('username', data.user.username);
         sessionStorage.setItem('email', data.user.email);
         sessionStorage.setItem('name', data.user.name);
-        
+      
         // Store user object
         sessionStorage.setItem('user', JSON.stringify({
           username: data.user.username,
