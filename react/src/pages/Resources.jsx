@@ -65,6 +65,30 @@ function Resources() {
     email: user.email
   };
 };
+ const handleRemove = async (resourceId) => {
+  const reason = prompt('Enter reason for removing this resource:') || 'No reason provided';
+
+  try {
+    await axios.delete(`http://localhost:5000/api/admin/remove-resource/${resourceId}`, {
+      data: { reason },
+      headers: {
+        'session-id': sessionStorage.getItem('sessionID'),
+        'userid': sessionStorage.getItem('userId'),
+        'username': sessionStorage.getItem('username'),
+        'role': sessionStorage.getItem('isAdmin') === 'true' ? 'admin' : 'user',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    alert('✅ Resource removed successfully');
+
+    // Refresh list after removal
+    setResources(prev => prev.filter(r => r._id !== resourceId));
+  } catch (err) {
+    console.error('❌ Failed to remove resource:', err);
+    alert(`Error: ${err.response?.data?.error || 'Something went wrong'}`);
+  }
+};
 
 
   // Function to record view
@@ -528,21 +552,29 @@ function Resources() {
                         </div>
                         
                         <div className="resource-actions">
-                          <button 
-                            onClick={() => handleView(res)} 
-                            className="view-btn"
-                          >
-                            <Eye size={16} />
-                            View
-                          </button>
-                          <button 
-                            onClick={() => handleDownload(res)} 
-                            className="download-btn"
-                          >
-                            <Download size={16} />
-                            Download
-                          </button>
-                        </div>
+  <button onClick={() => handleView(res)} className="view-btn">
+    <Eye size={16} /> View
+  </button>
+  <button onClick={() => handleDownload(res)} className="download-btn">
+    <Download size={16} /> Download
+  </button>
+  {sessionStorage.getItem('isAdmin') === 'true' && (
+    <button
+      onClick={() => handleRemove(res._id)}
+      className="remove-btn"
+      style={{
+        backgroundColor: '#dc2626',
+        color: 'white',
+        padding: '6px 12px',
+        borderRadius: '4px',
+        marginLeft: '8px'
+      }}
+    >
+      🗑️ Remove
+    </button>
+  )}
+</div>
+
                       </div>
                     ))
                   ) : (

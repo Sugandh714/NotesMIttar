@@ -1543,13 +1543,13 @@ app.get('/api/admin/pending-resources', isAdmin, async (req, res) => {
         };
       })
     );
-    await logSessionAction(req, 'manageResources', {
-  type: 'APPROVE',
-  resourceID: resource._id.toString(),
-  filename: resource.filename,
-  contributor: resource.uploadedBy,
-   relevanceScore: resource.relevanceScore || 0
-});
+//     await logSessionAction(req, 'manageResources', {
+//   type: 'APPROVE',
+//   resourceID: resource._id.toString(),
+//   filename: resource.filename,
+//   contributor: resource.uploadedBy,
+//    relevanceScore: resource.relevanceScore || 0
+// });
 
     
 
@@ -1665,7 +1665,13 @@ app.post('/api/admin/approve-resource/:resourceId', isAdmin, async (req, res) =>
       subject: resource.subject,
       resourceType: resource.type
     });
-
+     await logSessionAction(req, 'manageResources', {
+  type: 'APPROVE',
+  resourceID: resource._id.toString(),
+  filename: resource.filename,
+  contributor: resource.uploadedBy,
+   relevanceScore: resource.relevanceScore || 0
+});
     // Update user's upload count if not already counted
     const user = await User.findOne({ username: resource.uploadedBy });
     if (user) {
@@ -1755,7 +1761,7 @@ app.delete('/api/admin/remove-resource/:resourceId', isAdmin, async (req, res) =
       return res.status(404).json({ error: 'Resource not found' });
     }
 
-    // Create transaction record
+    // 🔁 Log transaction
     await Transaction.create({
       type: 'resourceRemoval',
       adminId: req.adminUser._id,
@@ -1771,30 +1777,28 @@ app.delete('/api/admin/remove-resource/:resourceId', isAdmin, async (req, res) =
       resourceType: resource.type
     });
 
-    // Delete file from GridFS
+    // ✅ Log in session
+    await logSessionAction(req, 'manageResources', {
+      type: 'REMOVE',
+      resourceID: resource._id.toString(),
+      filename: resource.filename,
+      contributor: resource.uploadedBy,
+      reason: reason || 'No reason provided',
+      relevanceScore: resource.relevanceScore || 0
+    });
+
+    // 🗑️ Delete file from GridFS
     if (resource.fileId) {
       try {
-        
         await gridfsBucket.delete(resource.fileId);
         console.log(`🗑️ File ${resource.fileId} deleted from GridFS`);
       } catch (error) {
-        console.warn('Failed to delete file from GridFS:', error);
+        console.warn('⚠️ Failed to delete file from GridFS:', error);
       }
     }
 
-    // Remove resource from database
+    // ❌ Delete from Resource collection
     await Resource.findByIdAndDelete(resourceId);
-
-    // Decrease user's upload count
-    const user = await User.findOne({ username: resource.uploadedBy });
-    if (user && user.uploadCount > 0) {
-      await User.findByIdAndUpdate(user._id, { $inc: { uploadCount: -1 } });
-    }
-    await logSessionAction(req, 'AdminAction', {
-  targetUsername: resource.uploadedBy,
-  actionType: 'REMOVE_RESOURCE',
-  reason: reason || 'No reason provided'
-});
 
     res.json({ success: true, message: 'Resource removed successfully' });
 
@@ -1803,6 +1807,7 @@ app.delete('/api/admin/remove-resource/:resourceId', isAdmin, async (req, res) =
     res.status(500).json({ error: 'Failed to remove resource' });
   }
 });
+
 
 // Get admin transaction history
 app.get('/api/admin/transactions', isAdmin, async (req, res) => {

@@ -19,6 +19,7 @@ const AdminDashboard = () => {
       [_id]: !prev[_id]
     }));
   };
+  
 
   const handleAction = async (action, docId, resourceId = null) => {
     const document = pendingDocuments.find(d => d._id === docId);
@@ -71,7 +72,31 @@ const AdminDashboard = () => {
       alert(`Error: ${error.response?.data?.error || 'Something went wrong'}`);
     }
   };
+  const handleRemove = async (resourceId) => {
+  const reason = prompt('Enter reason for removing this resource:') || 'No reason provided';
 
+  try {
+    await axios.delete(`http://localhost:5000/api/admin/remove-resource/${resourceId}`, {
+      data: { reason },
+      headers: {
+        'session-id': sessionStorage.getItem('sessionID'),
+        'userid': sessionStorage.getItem('userId'),
+        'username': sessionStorage.getItem('username'),
+        'role': sessionStorage.getItem('isAdmin') === 'true' ? 'admin' : 'user',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    alert('✅ Resource removed successfully');
+
+    // Refresh list (optional: you can filter it out instead)
+    fetchPendingResources();
+
+  } catch (err) {
+    console.error('❌ Failed to remove resource:', err);
+    alert(err?.response?.data?.error || 'Something went wrong');
+  }
+};
 
   const getStatusBadge = (status) => {
     const statusStyles = {
@@ -92,10 +117,7 @@ const AdminDashboard = () => {
     if (score >= 75) return 'text-yellow-600';
     return 'text-red-600';
   };
-  useEffect(() => {
-    console.log('🧑‍💻 Admin username from session:', sessionStorage.getItem('username'));
-
-    const fetchPendingResources = async () => {
+  const fetchPendingResources = async () => {
       const adminUsername = sessionStorage.getItem('username');
       if (!adminUsername) {
         console.error('⚠️ Admin username not found in sessionStorage');
@@ -114,10 +136,14 @@ const AdminDashboard = () => {
         setLoading(false);
       }
     };
+  useEffect(() => {
+    console.log('🧑‍💻 Admin username from session:', sessionStorage.getItem('username'));
+
+    
 
     fetchPendingResources();
   }, []);
-
+  
   return (
     <>
     <Navbar />
@@ -265,6 +291,13 @@ const AdminDashboard = () => {
                                         <RefreshCw size={14} />
                                         Replace
                                       </button>
+                                      <button
+  onClick={() => handleRemove(resource._id)}
+  className="flex items-center gap-1 mt-2 px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm"
+>
+  🗑️ Remove
+</button>
+
                                     </div>
                                   </div>
                                 </div>
