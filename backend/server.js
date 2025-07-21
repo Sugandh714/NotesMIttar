@@ -18,6 +18,7 @@ const crypto = require('crypto');
 const mongoURI = 'mongodb://localhost:27017/notesmittarDB';
 const SessionLog = require('./models/SessionLog');
 const { v4: uuidv4 } = require('uuid');
+const blockchain = require('../fabric/Doc_function');
 
 // Connect to MongoDB
 mongoose.connect(mongoURI, {
@@ -29,275 +30,67 @@ mongoose.connect(mongoURI, {
   console.error('❌ MongoDB connection error:', err);
   process.exit(1);
 });
-// ✅ Setup email transporter early in the code
-let transporter;
 
-// ✅ Initialize transporter with better error handling
-const initializeEmailTransporter = () => {
-  console.log('📧 Initializing email transporter...');
-  console.log('SMTP_EMAIL:', process.env.SMTP_EMAIL);
-  console.log('SMTP_PASSWORD exists:', !!process.env.SMTP_PASSWORD);
-  console.log('ADMIN_EMAILS:', process.env.ADMIN_EMAILS);
+const {
+  logAction,
+  getSessionLogs,
+  getAllSessionIDs,
+  getAllActions
+} = require(path.join(__dirname, '..', 'fabric', 'Doc_function'));
 
-  if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-    console.error('❌ Missing email configuration in environment variables');
-    return null;
+// ✅ Route to log an action to the blockchain
+app.post('/blockchain/log', async (req, res) => {
+  try {
+    const result = await blockchain.logAction(req.body);
+    res.status(200).json({ success: true, result });
+  } catch (err) {
+    console.error('Error logging action:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
+});
 
-  transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.SMTP_EMAIL,
-      pass: process.env.SMTP_PASSWORD
-    }
-    // debug: true,
-    // logger: true
+// ✅ Route to get session logs by sessionID
+app.get('/blockchain/session/:sessionID', async (req, res) => {
+  try {
+    const result = await blockchain.getSessionLogs(req.params.sessionID);
+    res.status(200).json({ success: true, result });
+  } catch (err) {
+    console.error('Error fetching session logs:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ✅ Route to get all session IDs
+app.get('/blockchain/sessions', async (req, res) => {
+  try {
+    const result = await blockchain.getAllSessionIDs();
+    res.status(200).json({ success: true, sessions: result });
+  } catch (err) {
+    console.error('Error fetching session IDs:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ✅ Route to get all actions across all sessions
+app.get('/blockchain/actions', async (req, res) => {
+  try {
+    const result = await blockchain.getAllActions();
+    res.status(200).json({ success: true, actions: result });
+  } catch (err) {
+    console.error('Error fetching all actions:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+app.get('/api/test-log', async (req, res) => {
+  const result = await logAction({
+    sessionID: 'test123',
+    sessionUsername: 'sugandh',
+    action: 'testAction',
+    timestamp: new Date().toISOString()
   });
-
-  // Test the transporter connection
-  transporter.verify((error, success) => {
-    if (error) {
-      console.error('❌ Email transporter verification failed:', error);
-      console.log('📧 Please check your Gmail credentials and app password');
-    } else {
-      console.log('✅ Email transporter is ready to send emails');
-    }
-  });
-
-  return transporter;
-};
-
-// Initialize transporter
-transporter = initializeEmailTransporter();
-
-// ... (rest of your MongoDB and GridFS setup code remains the same)
-
-// ✅ Enhanced contact route with extensive debugging
-app.post('/api/contact', async (req, res) => {
-  console.log('📩 ================================');
-  console.log('📩 CONTACT FORM SUBMISSION RECEIVED');
-  console.log('📩 ================================');
-  console.log('📩 Request body:', req.body);
-  console.log('📩 Request headers:', req.headers);
-
-  const { name, email, message } = req.body;
-
-  // Basic validation
-  if (!name || !email || !message) {
-    console.log('❌ Validation failed - missing fields');
-    console.log('❌ Name:', name);
-    console.log('❌ Email:', email);
-    console.log('❌ Message:', message);
-    return res.status(400).json({ error: 'All fields are required' });
-  }
-
-  console.log('✅ Validation passed');
-
-  try {
-    console.log('💾 Attempting to save to MongoDB...');
-
-    // ✅ Save message to MongoDB with detailed logging
-    const contactData = {
-      name,
-      email,
-      message,
-      submittedAt: new Date()
-    };
-
-    console.log('💾 Data to save:', contactData);
-
-    const savedMessage = await ContactMessage.create(contactData);
-    console.log('✅ Contact message saved to MongoDB successfully!');
-    console.log('✅ Saved message ID:', savedMessage._id);
-    console.log('✅ Saved message details:', savedMessage);
-
-    // ✅ Check transporter availability
-    if (!transporter) {
-      console.log('❌ Email transporter not available, trying to reinitialize...');
-      transporter = initializeEmailTransporter();
-      if (!transporter) {
-        console.log('❌ Failed to initialize email transporter');
-        return res.status(500).json({
-          error: 'Message saved but email service unavailable',
-          messageId: savedMessage._id
-        });
-      }
-    }
-
-    // ✅ Check admin emails configuration
-    if (!process.env.ADMIN_EMAILS) {
-      console.log('❌ ADMIN_EMAILS not configured in environment');
-      return res.status(500).json({
-        error: 'Message saved but admin emails not configured',
-        messageId: savedMessage._id
-      });
-    }
-
-    const adminEmails = process.env.ADMIN_EMAILS.split(',').map(e => e.trim());
-    console.log('📮 Admin emails configured:', adminEmails);
-
-    // ✅ Prepare email
-    const mailOptions = {
-      from: process.env.SMTP_EMAIL,
-      to: adminEmails,
-      subject: `New Contact Message from ${name}`,
-      html: `
-        <h3>New Contact Message</h3>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Message:</strong></p>
-        <div style="background: #f5f5f5; padding: 15px; border-radius: 5px;">
-          ${message.replace(/\n/g, '<br>')}
-        </div>
-        <p><em>Submitted at: ${new Date().toLocaleString()}</em></p>
-      `,
-      text: `New Contact Message\n\nName: ${name}\nEmail: ${email}\n\nMessage:\n${message}\n\nSubmitted at: ${new Date().toLocaleString()}`
-    };
-
-    console.log('📧 Email options prepared:', {
-      from: mailOptions.from,
-      to: mailOptions.to,
-      subject: mailOptions.subject
-    });
-
-    console.log('📤 Attempting to send email...');
-    const emailResult = await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent successfully!');
-    console.log('✅ Email result:', emailResult);
-
-    res.status(201).json({
-      success: true,
-      message: 'Message received and emailed to admins successfully!',
-      messageId: savedMessage._id,
-      emailSent: true
-    });
-
-  } catch (error) {
-    console.error('❌ ================================');
-    console.error('❌ CONTACT FORM ERROR');
-    console.error('❌ ================================');
-    console.error('❌ Error name:', error.name);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error stack:', error.stack);
-
-    // Handle specific error types
-    if (error.name === 'ValidationError') {
-      console.log('❌ MongoDB validation error details:', error.errors);
-      return res.status(400).json({
-        error: 'Invalid data format',
-        details: error.message
-      });
-    }
-
-    if (error.code === 'EAUTH') {
-      console.log('❌ Email authentication error');
-      return res.status(500).json({
-        error: 'Email authentication failed',
-        details: 'Please check email credentials'
-      });
-    }
-
-    if (error.code === 'ECONNECTION') {
-      console.log('❌ Email connection error');
-      return res.status(500).json({
-        error: 'Email service connection failed',
-        details: 'Please try again later'
-      });
-    }
-
-    res.status(500).json({
-      error: 'Failed to process contact form',
-      details: error.message
-    });
-  }
+  res.send(result);
 });
 
-// ✅ Add comprehensive test route
-app.get('/api/test-contact', async (req, res) => {
-  try {
-    console.log('🧪 Testing contact system...');
-
-    // Test 1: Check ContactMessage model
-    console.log('🧪 Test 1: Checking ContactMessage model...');
-    const testMessage = {
-      name: 'Test User',
-      email: 'test@example.com',
-      message: 'This is a test message',
-      submittedAt: new Date()
-    };
-
-    const savedTest = await ContactMessage.create(testMessage);
-    console.log('✅ Test message saved:', savedTest._id);
-
-    // Test 2: Check email transporter
-    console.log('🧪 Test 2: Checking email transporter...');
-    if (!transporter) {
-      throw new Error('Email transporter not initialized');
-    }
-
-    const testEmailOptions = {
-      from: process.env.SMTP_EMAIL,
-      to: process.env.SMTP_EMAIL, // Send to yourself
-      subject: 'Test Email from Contact System',
-      text: 'This is a test email to verify the contact system is working.'
-    };
-
-    const emailResult = await transporter.sendMail(testEmailOptions);
-    console.log('✅ Test email sent:', emailResult.messageId);
-
-    // Clean up test message
-    await ContactMessage.findByIdAndDelete(savedTest._id);
-    console.log('✅ Test message cleaned up');
-
-    res.json({
-      success: true,
-      message: 'All contact system tests passed!',
-      tests: {
-        mongodbSave: true,
-        emailSend: true,
-        emailId: emailResult.messageId
-      }
-    });
-
-  } catch (error) {
-    console.error('❌ Contact system test failed:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      details: 'Contact system test failed'
-    });
-  }
-});
-
-// ✅ Add route to check recent contact messages
-app.get('/api/contact-messages', async (req, res) => {
-  try {
-    console.log('📋 Fetching recent contact messages...');
-    const messages = await ContactMessage.find()
-      .sort({ submittedAt: -1 })
-      .limit(10);
-
-    console.log(`📋 Found ${messages.length} recent messages`);
-
-    res.json({
-      success: true,
-      count: messages.length,
-      messages: messages.map(msg => ({
-        id: msg._id,
-        name: msg.name,
-        email: msg.email,
-        message: msg.message.substring(0, 100) + (msg.message.length > 100 ? '...' : ''),
-        submittedAt: msg.submittedAt
-      }))
-    });
-  } catch (error) {
-    console.error('❌ Error fetching contact messages:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
 //SESSION LOGGING
 
 async function logSessionAction(req, category, details) {
@@ -508,27 +301,34 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     const sessionID = uuidv4();
-req.sessionInfo = {
-  sessionID,
-  sessionUserID: user._id.toString(),
-  sessionUsername: user.username,
-  sessionRole: user.isAdmin ? 'admin' : 'user',
-  sessionTimestamp: new Date()
-};
-await SessionLog.create({ ...req.sessionInfo, actions: [] });
+    req.sessionInfo = {
+      sessionID,
+      sessionUserID: user._id.toString(),
+      sessionUsername: user.username,
+      sessionRole: user.isAdmin ? 'admin' : 'user',
+      sessionTimestamp: new Date()
+    };
+    await blockchain.logAction({
+      sessionID: req.sessionInfo.sessionID,
+      sessionUsername: req.sessionInfo.sessionUsername,
+      action: 'login',
+      timestamp: new Date().toISOString()
+    });
+
+    await SessionLog.create({ ...req.sessionInfo, actions: [] });
     res.status(200).json({
-  message: 'Login successful',
-  sessionID, // ✅ include this
-  user: {
-    _id: user._id,
-    name: user.name,
-    username: user.username,
-    email: user.email,
-    isAdmin: user.isAdmin,
-    uploadCount: user.uploadCount,
-    status: user.status
-  }
-});
+      message: 'Login successful',
+      sessionID, // ✅ include this
+      user: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        isAdmin: user.isAdmin,
+        uploadCount: user.uploadCount,
+        status: user.status
+      }
+    });
 
   } catch (err) {
     console.error('Login error:', err);
@@ -998,12 +798,24 @@ app.post('/api/upload', (req, res) => {
       console.log(`✅ Updated uploadCount for user: ${existingUser.username}`);
       console.log('📦 Session Info:', req.sessionInfo);
       console.log('📥 Calling logSessionAction for Upload...');
+
       await logSessionAction(req, 'uploadResources', {
-  resourceID: resource._id.toString(),
-  filename: resource.filename,
-  status: resource.status,
-  uploadTimestamp: new Date()
-});
+        resourceID: resource._id.toString(),
+        filename: resource.filename,
+        status: resource.status,
+        uploadTimestamp: new Date()
+      });
+      await blockchain.logAction({
+        sessionID: req.sessionInfo?.sessionID || 'unknown-session',
+        sessionUsername: req.sessionInfo?.sessionUsername || uploadedBy,
+        action: 'uploadResource',
+        timestamp: new Date().toISOString(),
+        fileID: resource._id.toString(),
+        gridID: gridFSFile._id.toString(),
+        fileStatus: resource.status || null,
+        contributorUsername: null,
+        contributorStatus: null
+      });
 
 
       res.status(201).json({
@@ -1081,7 +893,7 @@ app.post('/api/record-view/:resourceId', async (req, res) => {
     };
 
     const view = await ResourceView.recordView(viewData);
-
+    
     if (view) {
       // Increment view count in Resource model
       await Resource.findByIdAndUpdate(
@@ -1090,10 +902,19 @@ app.post('/api/record-view/:resourceId', async (req, res) => {
         { new: true }
       );
       await logSessionAction(req, 'viewResources', {
-  resourceID: resource._id.toString(),
-  filename: resource.filename,
-  ipAddress: getUserIP(req),
-  viewedAt: new Date()
+        resourceID: resource._id.toString(),
+        filename: resource.filename,
+        ipAddress: getUserIP(req),
+        viewedAt: new Date()
+      });
+     await blockchain.logAction({
+  sessionID: req.sessionInfo.sessionID,
+  sessionUsername: req.sessionInfo.sessionUsername,
+  action: 'viewResource',
+  timestamp: new Date().toISOString(),
+  fileID: resource._id.toString(),
+  gridID: resource.fileId.toString(),
+  fileStatus: 'approved'
 });
 
 
@@ -1138,6 +959,16 @@ app.get('/api/file/:id', async (req, res) => {
         { $inc: { downloadCount: 1 } },
         { new: true }
       );
+      await blockchain.logAction({
+  sessionID: req.sessionInfo.sessionID,
+  sessionUsername: req.sessionInfo.sessionUsername,
+  action: 'downloadResource',
+  timestamp: new Date().toISOString(),
+  fileID: resource._id.toString(),
+  gridID: resource.fileId.toString(),
+  fileStatus: 'approved'
+});
+
       console.log(`✅ Download count incremented for resource ${resource._id}`);
     }
 
@@ -1261,6 +1092,14 @@ app.get('/api/contributor/:username/resources', async (req, res) => {
     }
 
     const resources = await Resource.find({ uploadedBy: username, status: 'approved' }).sort({ uploadDate: -1 });
+    await blockchain.logAction({
+  sessionID: req.sessionInfo.sessionID,
+  sessionUsername: req.sessionInfo.sessionUsername,
+  action: 'viewContributorProfile',
+  timestamp: new Date().toISOString(),
+  contributorUsername: contributor.username,
+  contributorStatus: contributor.status
+});
 
 
     res.json({
@@ -1405,14 +1244,14 @@ const isAdmin = async (req, res, next) => {
     if (!user || !user.isAdmin) {
       return res.status(403).json({ error: 'Admin access required' });
     }
-    
+
     req.adminUser = user;
     req.sessionInfo = {
-  sessionID: req.headers['session-id'],
-  sessionUserID: req.adminUser._id.toString(),
-  sessionUsername: req.adminUser.username,
-  sessionRole: 'admin'
-};
+      sessionID: req.headers['session-id'],
+      sessionUserID: req.adminUser._id.toString(),
+      sessionUsername: req.adminUser.username,
+      sessionRole: 'admin'
+    };
 
     next();
   } catch (error) {
@@ -1450,9 +1289,17 @@ app.post('/api/admin/contributor/suspend', isAdmin, async (req, res) => {
     user.suspensionReason = isSuspending ? (reason || 'No reason provided') : '';
     await user.save();
     await logSessionAction(req, 'manageContributor', {
+      contributorUsername: user.username,
+      actionType: isSuspending ? 'SUSPEND' : 'ACTIVATE',
+      reason: reason || 'No reason provided'
+    });
+    await blockchain.logAction({
+  sessionID: req.sessionInfo.sessionID,
+  sessionUsername: req.sessionInfo.sessionUsername,
+  action: isSuspending ? 'suspendContributor' : 'activateContributor',
+  timestamp: new Date().toISOString(),
   contributorUsername: user.username,
-  actionType: isSuspending ? 'SUSPEND' : 'ACTIVATE',
-  reason: reason || 'No reason provided'
+  contributorStatus: user.status
 });
 
 
@@ -1491,10 +1338,10 @@ app.post('/api/admin/contributor/reason', isAdmin, async (req, res) => {
     user.suspensionReason = reason || '';
     await user.save();
     await logSessionAction(req, 'manageContributor', {
-  contributorUsername: user.username,
-  actionType: isSuspending ? 'SUSPEND' : 'ACTIVATE',
-  reason: reason || 'No reason provided'
-});
+      contributorUsername: user.username,
+      actionType: isSuspending ? 'SUSPEND' : 'ACTIVATE',
+      reason: reason || 'No reason provided'
+    });
 
 
     res.json({ message: 'Suspension reason updated', user });
@@ -1543,15 +1390,15 @@ app.get('/api/admin/pending-resources', isAdmin, async (req, res) => {
         };
       })
     );
-//     await logSessionAction(req, 'manageResources', {
-//   type: 'APPROVE',
-//   resourceID: resource._id.toString(),
-//   filename: resource.filename,
-//   contributor: resource.uploadedBy,
-//    relevanceScore: resource.relevanceScore || 0
-// });
+    //     await logSessionAction(req, 'manageResources', {
+    //   type: 'APPROVE',
+    //   resourceID: resource._id.toString(),
+    //   filename: resource.filename,
+    //   contributor: resource.uploadedBy,
+    //    relevanceScore: resource.relevanceScore || 0
+    // });
 
-    
+
 
     res.json(enrichedResources);
   } catch (error) {
@@ -1614,19 +1461,37 @@ app.post('/api/admin/approve-resource/:resourceId', isAdmin, async (req, res) =>
             resourceType: resource.type
           });
           await logSessionAction(req, 'manageResources', {
-  type: 'REPLACE',
-  oldDocument: {
-    resourceID: oldResource._id.toString(),
-    filename: oldResource.filename,
-    contributor: oldResource.uploadedBy,
-     relevanceScore: oldResource.relevanceScore || 0
-  },
-  newDocument: {
-    resourceID: resource._id.toString(),
-    filename: resource.filename,
-    contributor: resource.uploadedBy,
-     relevanceScore: oldResource.relevanceScore || 0
-  }
+            type: 'REPLACE',
+            oldDocument: {
+              resourceID: oldResource._id.toString(),
+              filename: oldResource.filename,
+              contributor: oldResource.uploadedBy,
+              relevanceScore: oldResource.relevanceScore || 0
+            },
+            newDocument: {
+              resourceID: resource._id.toString(),
+              filename: resource.filename,
+              contributor: resource.uploadedBy,
+              relevanceScore: oldResource.relevanceScore || 0
+            }
+          });
+          await blockchain.logAction({
+  sessionID: req.sessionInfo.sessionID,
+  sessionUsername: req.sessionInfo.sessionUsername,
+  action: 'approveResource',
+  timestamp: new Date().toISOString(),
+  fileID: resource._id.toString(),
+  gridID: resource.fileId.toString(),
+  fileStatus: 'approved'
+});
+await blockchain.logAction({
+  sessionID: req.sessionInfo.sessionID,
+  sessionUsername: req.sessionInfo.sessionUsername,
+  action: 'rejectResource',
+  timestamp: new Date().toISOString(),
+  fileID: oldResource._id.toString(),
+  gridID: oldResource.fileId.toString(),
+  fileStatus: 'rejected'
 });
 
 
@@ -1665,13 +1530,23 @@ app.post('/api/admin/approve-resource/:resourceId', isAdmin, async (req, res) =>
       subject: resource.subject,
       resourceType: resource.type
     });
-     await logSessionAction(req, 'manageResources', {
-  type: 'APPROVE',
-  resourceID: resource._id.toString(),
-  filename: resource.filename,
-  contributor: resource.uploadedBy,
-   relevanceScore: resource.relevanceScore || 0
+    await logSessionAction(req, 'manageResources', {
+      type: 'APPROVE',
+      resourceID: resource._id.toString(),
+      filename: resource.filename,
+      contributor: resource.uploadedBy,
+      relevanceScore: resource.relevanceScore || 0
+    });
+    await blockchain.logAction({
+  sessionID: req.sessionInfo.sessionID,
+  sessionUsername: req.sessionInfo.sessionUsername,
+  action: 'approveResource',
+  timestamp: new Date().toISOString(),
+  fileID: resource._id.toString(),
+  gridID: resource.fileId.toString(),
+  fileStatus: 'approved'
 });
+
     // Update user's upload count if not already counted
     const user = await User.findOne({ username: resource.uploadedBy });
     if (user) {
@@ -1732,12 +1607,21 @@ app.post('/api/admin/reject-resource/:resourceId', isAdmin, async (req, res) => 
       }
     }
     await logSessionAction(req, 'ManageResource', {
-  type: 'REJECT',
-  filename: resource.filename,
-  resourceID: resource._id.toString(),
-  contributor: resource.uploadedBy,
-  relevanceScore: resource.relevanceScore || 0,
-  reason: reason || 'No reason provided'
+      type: 'REJECT',
+      filename: resource.filename,
+      resourceID: resource._id.toString(),
+      contributor: resource.uploadedBy,
+      relevanceScore: resource.relevanceScore || 0,
+      reason: reason || 'No reason provided'
+    });
+    await blockchain.logAction({
+  sessionID: req.sessionInfo.sessionID,
+  sessionUsername: req.sessionInfo.sessionUsername,
+  action: 'rejectResource',
+  timestamp: new Date().toISOString(),
+  fileID: resource._id.toString(),
+  gridID: resource.fileId.toString(),
+  fileStatus: 'rejected'
 });
 
     res.json({ success: true, message: 'Resource rejected successfully' });

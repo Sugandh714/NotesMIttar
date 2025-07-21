@@ -1,0 +1,13 @@
+{
+  "name": "mittarlogs",
+  "version": "1.0.0",
+  "description": "Session logging chaincode for Hyperledger Fabric",
+  "main": "index.js",
+  "scripts": {
+    "start": "fabric-chaincode-node start"
+  },
+  "dependencies": {
+    "fabric-contract-api": "^2.4.1",
+    "fabric-shim": "^2.4.1"
+  }
+}
