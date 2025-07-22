@@ -36,7 +36,7 @@ function NavLogin() {
           return;
        }
       if (res.ok) {
-         const sessionID = crypto.randomUUID();
+
         sessionStorage.setItem('loggedIn', 'true');
         sessionStorage.setItem('userId', data.user._id);
         sessionStorage.setItem('username', data.user.username);
