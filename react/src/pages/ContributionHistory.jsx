@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import '../style/ContributionHistory.css';
+import { getSessionHeaders } from '../component/getSessionHeaders';
 
 export default function ContributionHistory() {
   const [contributions, setContributions] = useState([]);
@@ -19,7 +20,7 @@ export default function ContributionHistory() {
 
         const res = await fetch('http://localhost:5000/api/my-resources', {
           headers: { 
-            'username': username,
+            ...getSessionHeaders(),
             'email': email || 'unknown@example.com'
           }
         });

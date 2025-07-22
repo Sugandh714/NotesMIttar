@@ -22,7 +22,7 @@ async function connectToNetwork() {
     const contract = network.getContract(chaincodeName);
 
 const peers = network.getChannel().getEndorsers();
-console.log('Connected peers:', peers.map(p => p.name));
+// console.log('Connected peers:', peers.map(p => p.name));
 
     return { gateway, contract };
 }
@@ -81,17 +81,33 @@ async function getSessionLogs(sessionID) {
 
 // 🔎 Query all session IDs
 async function getAllSessionIDs() {
-    const { gateway, contract } = await connectToNetwork();
-    try {
-        const result = await contract.evaluateTransaction('getAllSessionIDs');
-        return JSON.parse(result.toString());
-    } catch (error) {
-        console.error('❌ Failed to get session IDs:', error);
-        throw error;
-    } finally {
-        gateway.disconnect();
+  const { gateway, contract } = await connectToNetwork();
+  try {
+    const result = await contract.evaluateTransaction('getAllActions');
+    const allActions = JSON.parse(result.toString());
+
+    const sessionMap = {};
+
+    for (const action of allActions) {
+      const sessionID = action.sessionID;
+      if (!sessionMap[sessionID]) {
+        sessionMap[sessionID] = {
+          sessionID,
+          sessionUsername: action.sessionUsername || 'unknown',
+          timestamp: action.timestamp
+        };
+      }
     }
+
+    return Object.values(sessionMap);
+  } catch (error) {
+    console.error('❌ Failed to get session IDs:', error);
+    throw error;
+  } finally {
+    gateway.disconnect();
+  }
 }
+
 
 // 🔎 Optional: Get all logs
 async function getAllActions() {

@@ -14,6 +14,8 @@ import ProtectedRoute from './component/ProtectedRoute';
 import LeaderboardPage from './pages/LeaderboardPage';
 import NavLogin from './pages/NavLogin';
 import ProfilePage from './pages/ProfilePage';
+import AdminCheckSessions from './pages/AdminCheckSession';
+import AdminSessionDetail from './pages/AdminSessionDetail';
 
 
 
@@ -44,7 +46,8 @@ function App() {
          <Route path="/adminHome" element={<AdminHome />} />
   <Route path="/admin/manage-contributors" element={<ManageContributor />} />
   <Route path="/admin/manage-resources" element={<ManageResources />} />
-
+<Route path="/admin/check-sessions" element={<AdminCheckSessions />} />
+<Route path="/admin/session/:sessionID" element={<AdminSessionDetail />} />
    <Route path="/ProfilePage" element={<ProfilePage />} />
       </Routes>
       

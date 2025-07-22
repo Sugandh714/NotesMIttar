@@ -125,15 +125,17 @@ if (!username || !email) {
     const response = await fetch('http://localhost:5000/api/upload', {
   method: 'POST',
   headers: {
-    'session-id': sessionStorage.getItem('sessionID'),
-  'userid': sessionStorage.getItem('userId'),
-  'username': sessionStorage.getItem('username'),
-  'role': sessionStorage.getItem('isAdmin') === 'true' ? 'admin' : 'user'
+  'session-id': sessionStorage.getItem('sessionID') || 'unknown-session',
+  'username': sessionStorage.getItem('username') || 'unknown'
+  // do NOT set 'Content-Type' when sending FormData
+},
 
-  },
+  
+
   
   body: uploadFormData,
 });
+
     console.log('📤 Headers being sent:', {
   'session-id': sessionStorage.getItem('sessionID'),
   'userid': sessionStorage.getItem('userId'),

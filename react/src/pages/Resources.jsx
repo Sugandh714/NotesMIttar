@@ -144,37 +144,44 @@ function Resources() {
   };
 
   // Function to handle download action
-  const handleDownload = async (resource) => {
-    try {
-      // Update local state to reflect the download count increase
-      setResources(prevResources => 
-        prevResources.map(r => 
-          r._id === resource._id 
-            ? { ...r, downloadCount: (r.downloadCount || 0) + 1 }
-            : r
-        )
-      );
+const handleDownload = async (resource) => {
+  try {
+    // Update local state for UI
+    setResources(prevResources => 
+      prevResources.map(r => 
+        r._id === resource._id 
+          ? { ...r, downloadCount: (r.downloadCount || 0) + 1 }
+          : r
+      )
+    );
 
-      // Create download link with download parameter
-      const downloadUrl = `${resource.fileUrl}?download=true`;
-      
-      // Create a temporary anchor element to trigger download
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `${resource.title}.pdf`;
+    const response = await axios.get(`${resource.fileUrl}?download=true`, {
+      headers: {
+        'session-id': sessionStorage.getItem('sessionID'),
+        'username': sessionStorage.getItem('username'),
+        'role': sessionStorage.getItem('isAdmin') === 'true' ? 'admin' : 'user',
+        'userid': sessionStorage.getItem('userId')
+      },
+      responseType: 'blob'
+    });
+
+    // Create a blob and trigger file download
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const downloadUrl = window.URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `${resource.title}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error('Error handling download:', error);
+    alert('Failed to download the file. Please try again.');
+  }
+};
 
 
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-     
-    } catch (error) {
-      console.error('Error handling download:', error);
-      // Fallback to direct link
-      window.open(`${resource.fileUrl}?download=true`, '_blank');
-    }
-  };
 
   // Fetch resources when we reach stage 5
   useEffect(() => {

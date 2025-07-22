@@ -2,23 +2,6 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import '../style/Contributor.css';
 
-const contributorData = {
-  'Sugandh Kushwaha': {
-    rank: 1,
-    docs: [
-      { title: 'DBMS Notes - Unit 1', views: 152, rating: 4.8, link: './docs/dbms-unit1.pdf' },
-      { title: 'CN Past Paper 2023', views: 101, rating: 4.5, link: '/docs/cn-2023.pdf' },
-    ],
-  },
-  'Amit Verma': {
-    rank: 2,
-    docs: [
-      { title: 'DSA Book Summary', views: 123, rating: 4.7, link: '/docs/dsa-summary.pdf' },
-    ],
-  },
-  // Add other contributors similarly
-};
-
 export default function Contributor() {
   const { name } = useParams();
   const decodedName = decodeURIComponent(name);

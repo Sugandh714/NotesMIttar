@@ -30,13 +30,19 @@ mongoose.connect(mongoURI, {
   console.error('❌ MongoDB connection error:', err);
   process.exit(1);
 });
-
+ // CORS setup
+app.use(cors({
+  origin: 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 const {
   logAction,
   getSessionLogs,
   getAllSessionIDs,
   getAllActions
 } = require(path.join(__dirname, '..', 'fabric', 'Doc_function'));
+
 
 // ✅ Route to log an action to the blockchain
 app.post('/blockchain/log', async (req, res) => {
@@ -163,12 +169,7 @@ const upload = multer({
   }
 });
 
-// CORS setup
-app.use(cors({
-  origin: 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
-}));
+
 
 app.use(bodyParser.json());
 app.use((req, res, next) => {
@@ -657,7 +658,12 @@ app.post('/api/upload', (req, res) => {
 
       // Extract user info from headers
       const uploadedBy = req.headers.username || 'unknown';
+      const sessionID = req.headers['session-id'] || 'unknown-session';
+      const sessionUsername = uploadedBy;
+      req.sessionInfo = { sessionID, sessionUsername };
+
       const email = req.headers.email || 'unknown@example.com';
+      
 
       // Validate that user exists first
       const existingUser = await User.findOne({
@@ -933,6 +939,10 @@ app.post('/api/record-view/:resourceId', async (req, res) => {
 // Route to download/view files with download tracking
 app.get('/api/file/:id', async (req, res) => {
   try {
+    const uploadedBy = req.headers.username || 'unknown';
+    const sessionID = req.headers['session-id'] || 'unknown-session';
+    const sessionUsername = req.headers.username || 'unknown';
+
     const fileId = new mongoose.Types.ObjectId(req.params.id);
     const isDownload = req.query.download === 'true';
 
@@ -1092,14 +1102,6 @@ app.get('/api/contributor/:username/resources', async (req, res) => {
     }
 
     const resources = await Resource.find({ uploadedBy: username, status: 'approved' }).sort({ uploadDate: -1 });
-    await blockchain.logAction({
-  sessionID: req.sessionInfo.sessionID,
-  sessionUsername: req.sessionInfo.sessionUsername,
-  action: 'viewContributorProfile',
-  timestamp: new Date().toISOString(),
-  contributorUsername: contributor.username,
-  contributorStatus: contributor.status
-});
 
 
     res.json({
