@@ -1153,6 +1153,48 @@ app.get('/api/contributor/:username/resources', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+app.post('/api/log/viewContributorProfile', async (req, res) => {
+  try {
+    const { contributorUsername, contributorStatus } = req.body;
+    const sessionInfo = req.sessionInfo;
+
+    if (!sessionInfo || !sessionInfo.sessionID || !sessionInfo.sessionUsername) {
+      return res.status(400).json({ error: 'Missing session information' });
+    }
+
+    // Create the log payload
+    const logData = {
+      sessionID: sessionInfo.sessionID,
+      sessionUsername: sessionInfo.sessionUsername,
+      action: 'viewContributorProfile',
+      timestamp: new Date().toISOString(),
+      fileID: '',
+      gridID: '',
+      fileStatus: '',
+      contributorUsername,
+      contributorStatus
+    };
+
+    // 🔁 Call the blockchain function
+    const result = await blockchain.logAction(logData);
+    if (!result.success) {
+      return res.status(500).json({ error: 'Failed to log on chain', details: result.error });
+    }
+
+    // Also log into MongoDB session log (optional)
+    await logSessionAction(req, 'viewResources', {
+      contributorUsername,
+      contributorStatus,
+      viewedAt: new Date()
+    });
+
+    res.status(200).json({ message: 'Contributor view logged successfully' });
+  } catch (error) {
+    console.error('❌ Error logging contributor view:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 
 
 // Get user's rank

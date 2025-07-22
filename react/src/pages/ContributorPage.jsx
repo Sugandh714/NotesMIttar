@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import '../style/LeaderBoard.css';
+import { getSessionHeaders } from '../component/getSessionHeaders';
 // import Navbar from '../component/Navbar';
 
 function ContributorPage() {
@@ -12,21 +13,38 @@ function ContributorPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    axios
-      .get(`http://localhost:5000/api/contributor/${username}/resources`)
-      .then((res) => {
-        setContributor(res.data.contributor);
-        setResources(res.data.resources); // only approved resources
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Error fetching contributor:', err);
-        setError('Failed to load contributor profile.');
-        setLoading(false);
-      });
-  }, [username]);
+  axios
+    .get(`http://localhost:5000/api/contributor/${username}/resources`)
+    .then((res) => {
+      const contributorData = res.data.contributor;
+      setContributor(contributorData);
+      setResources(res.data.resources);
+      setLoading(false);
 
-  const renderAvatar = (avatar) => {
+      // 🔁 Log the profile view here
+      axios.post('http://localhost:5000/api/log/viewContributorProfile', {
+        contributorUsername: contributorData.username,
+        contributorStatus: contributorData.suspended ? 'suspended' : 'active'
+      }, {
+        headers: {
+           ...getSessionHeaders(),
+          'Content-Type': 'application/json'
+        
+        }
+      }).then(() => {
+        console.log('✅ Contributor profile view logged');
+      }).catch((err) => {
+        console.warn('⚠️ Failed to log contributor view:', err);
+      });
+
+    })
+    .catch((err) => {
+      console.error('Error fetching contributor:', err);
+      setError('Failed to load contributor profile.');
+      setLoading(false);
+    });
+}, [username]);
+   const renderAvatar = (avatar) => {
     // If avatar is an emoji (Unicode character)
     if (avatar && /\p{Extended_Pictographic}/u.test(avatar)) {
       return <div className="avatar-emoji">{avatar}</div>;
@@ -41,6 +59,7 @@ function ContributorPage() {
       />
     );
   };
+
 
   if (loading) return <div className="container">Loading...</div>;
   if (error) return <div className="container">{error}</div>;
