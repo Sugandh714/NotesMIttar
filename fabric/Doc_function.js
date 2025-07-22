@@ -29,41 +29,42 @@ const peers = network.getChannel().getEndorsers();
 
 // 🔁 Invoke a transaction (write)
 async function logAction(data) {
-    const {
-        sessionID,
-        sessionUsername,
-        action,
-        timestamp,
-        fileID = '',
-        gridID = '',
-        fileStatus = '',
-        contributorUsername = '',
-        contributorStatus = ''
-    } = data;
+  const {
+    sessionID,
+    sessionUsername,
+    action,
+    timestamp,
+    fileID = '',
+    gridID = '',
+    fileStatus = '',
+    contributorUsername = '',
+    contributorStatus = ''
+  } = data;
 
-    const { gateway, contract } = await connectToNetwork();
-    try {
-        await contract.submitTransaction(
-            'logAction',
-            sessionID,
-            sessionUsername,
-            action,
-            timestamp,
-            fileID,
-            gridID,
-            fileStatus,
-            contributorUsername,
-            contributorStatus
-        );
-        console.log('✅ Action logged on chain.');
-        return { success: true, message: 'Action logged successfully' };
-    } catch (error) {
-        console.error('❌ Failed to log action:', error);
-        return { success: false, error: error.message };
-    } finally {
-        gateway.disconnect();
-    }
+  const { gateway, contract } = await connectToNetwork();
+  try {
+    await contract.submitTransaction(
+      'logAction',
+      String(sessionID || ''),
+      String(sessionUsername || ''),
+      String(action || ''),
+      String(timestamp || ''),
+      String(fileID || ''),
+      String(gridID || ''),
+      String(fileStatus || ''),
+      String(contributorUsername || ''),
+      String(contributorStatus || '')
+    );
+    console.log('✅ Action logged on chain.');
+    return { success: true, message: 'Action logged successfully' };
+  } catch (error) {
+    console.error('❌ Failed to log action:', error);
+    return { success: false, error: error.message };
+  } finally {
+    gateway.disconnect();
+  }
 }
+
 
 // 🔎 Query all session logs
 async function getSessionLogs(sessionID) {

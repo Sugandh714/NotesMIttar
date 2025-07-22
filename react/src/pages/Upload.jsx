@@ -3,6 +3,7 @@ import '../style/Upload.css';
 import ContributionHistory from './ContributionHistory';
 import Navbar from '../component/Navbar';
 import ContactUs from '../component/ContactUs';
+import { getSessionHeaders } from '../component/getSessionHeaders';
 
 const Upload = () => {
 
@@ -125,8 +126,9 @@ if (!username || !email) {
     const response = await fetch('http://localhost:5000/api/upload', {
   method: 'POST',
   headers: {
-  'session-id': sessionStorage.getItem('sessionID') || 'unknown-session',
-  'username': sessionStorage.getItem('username') || 'unknown'
+   ...getSessionHeaders()
+  // 'session-id': sessionStorage.getItem('sessionID') || 'unknown-session',
+  // 'username': sessionStorage.getItem('username') || 'unknown'
   // do NOT set 'Content-Type' when sending FormData
 },
 

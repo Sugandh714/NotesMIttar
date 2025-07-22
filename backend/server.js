@@ -602,17 +602,17 @@ app.post('/api/change-password', async (req, res) => {
   }
 });
 
-// Add middleware to log all requests (for debugging)
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`, {
-    headers: {
-      authorization: req.headers.authorization ? 'Bearer ***' : 'none',
-      username: req.headers.username || 'none',
-      'content-type': req.headers['content-type'] || 'none'
-    }
-  });
-  next();
-});
+// // Add middleware to log all requests (for debugging)
+// app.use((req, res, next) => {
+//   console.log(`${req.method} ${req.path}`, {
+//     headers: {
+//       authorization: req.headers.authorization ? 'Bearer ***' : 'none',
+//       username: req.headers.username || 'none',
+//       'content-type': req.headers['content-type'] || 'none'
+//     }
+//   });
+//   next();
+// });
 // Upload Route with proper error handling
 app.post('/api/upload', (req, res) => {
   // Use multer middleware with error handling
@@ -658,9 +658,9 @@ app.post('/api/upload', (req, res) => {
 
       // Extract user info from headers
       const uploadedBy = req.headers.username || 'unknown';
-      const sessionID = req.headers['session-id'] || 'unknown-session';
-      const sessionUsername = uploadedBy;
-      req.sessionInfo = { sessionID, sessionUsername };
+      // const sessionID = req.headers['session-id'] || 'unknown-session';
+      // const sessionUsername = uploadedBy;
+      
 
       const email = req.headers.email || 'unknown@example.com';
       
@@ -811,17 +811,58 @@ app.post('/api/upload', (req, res) => {
         status: resource.status,
         uploadTimestamp: new Date()
       });
-      await blockchain.logAction({
-        sessionID: req.sessionInfo?.sessionID || 'unknown-session',
-        sessionUsername: req.sessionInfo?.sessionUsername || uploadedBy,
-        action: 'uploadResource',
-        timestamp: new Date().toISOString(),
-        fileID: resource._id.toString(),
-        gridID: gridFSFile._id.toString(),
-        fileStatus: resource.status || null,
-        contributorUsername: null,
-        contributorStatus: null
-      });
+     const sessionInfo = req.sessionInfo || {};
+const sessionID = sessionInfo.sessionID || 'unknown-session';
+const sessionUsername = sessionInfo.sessionUsername || uploadedBy;
+
+console.log('🔍 logAction payload:', {
+  sessionID,
+  sessionUsername,
+  timestamp: new Date().toISOString(),
+  fileID: resource._id?.toString(),
+  gridID: gridFSFile._id?.toString(),
+  fileStatus: resource.status || null,
+  contributorUsername: null,
+  contributorStatus: null
+});
+if (!resource?._id || !gridFSFile?._id || !resource.status) {
+  console.error('❌ Missing one or more required fields for blockchain log');
+  console.log('resource._id:', resource?._id);
+  console.log('gridFSFile._id:', gridFSFile?._id);
+  console.log('resource.status:', resource?.status);
+} else {
+  try {
+    await blockchain.logAction({
+      sessionID,
+      sessionUsername,
+      action: 'uploadResource',
+      timestamp: new Date().toISOString(),
+      fileID: resource._id.toString(),
+      gridID: gridFSFile._id.toString(),
+      fileStatus: resource.status,
+      contributorUsername: null,
+      contributorStatus: null
+    });
+  } catch (err) {
+    console.error('❌ Blockchain logAction error:', err.message);
+  }
+}
+
+// try {
+//   await blockchain.logAction({
+//     sessionID,
+//     sessionUsername,
+//     action: 'uploadResource',
+//     timestamp: new Date().toISOString(),
+//     fileID: resource._id?.toString(),
+//     gridID: gridFSFile._id?.toString(),
+//     fileStatus: resource.status || null,
+//     contributorUsername: null,
+//     contributorStatus: null
+//   });
+// } catch (err) {
+//   console.error('❌ Failed to log blockchain action:', err.message);
+// }
 
 
       res.status(201).json({
@@ -1112,6 +1153,7 @@ app.get('/api/contributor/:username/resources', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 // Get user's rank
 app.get('/api/my-rank', async (req, res) => {
