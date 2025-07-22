@@ -35,29 +35,46 @@ function NavLogin() {
           sessionStorage.clear(); // Clear any partial login info
           return;
        }
-      if (res.ok) {
+if (res.ok) {
+  const sessionID = data.sessionID;
 
-        sessionStorage.setItem('loggedIn', 'true');
-        sessionStorage.setItem('userId', data.user._id);
-        sessionStorage.setItem('username', data.user.username);
-        sessionStorage.setItem('email', data.user.email);
-        sessionStorage.setItem('name', data.user.name);
-              sessionStorage.setItem('sessionID', sessionID);
-          sessionStorage.setItem('user', JSON.stringify({
+  sessionStorage.setItem('sessionID', sessionID);
+  sessionStorage.setItem('loggedIn', 'true');
+  sessionStorage.setItem('userId', data.user._id);
+  sessionStorage.setItem('username', data.user.username);
+  sessionStorage.setItem('email', data.user.email);
+  sessionStorage.setItem('name', data.user.name);
+  sessionStorage.setItem('user', JSON.stringify({
     username: data.user.username,
     email: data.user.email
   }));
-        navigate(from, { replace: true }); // ⬅️ Changed to replace: true
-      } else {
+
+  if (data.user.avatar) {
+    sessionStorage.setItem('avatar', data.user.avatar);
+  }
+
+  if (data.user.isAdmin === true) {
+    sessionStorage.setItem('isAdmin', 'true');
+    sessionStorage.setItem('admin', JSON.stringify(data.user));
+  } else {
+    sessionStorage.setItem('isAdmin', 'false');
+    sessionStorage.removeItem('admin');
+  }
+
+  // Delay navigation slightly to ensure sessionStorage is fully written
+  setTimeout(() => {
+    navigate(from, { replace: true });
+  }, 100); // 100ms is usually enough
+}
+
+ // ⬅️ Changed to replace: true
+      else {
         alert(data.error || 'Login failed');
       }
     } catch (err) {
       alert('Something went wrong: ' + err.message);
     }
   };
-
-
-
 
   return (
     <>
