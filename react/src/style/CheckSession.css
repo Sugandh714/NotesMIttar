@@ -1,89 +1,253 @@
-.admin-session-page {
+/* ========== GLOBAL STYLES ========== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f9fafb;
+  color: #1f2937;
+  line-height: 1.6;
+}
+
+/* ========== PAGE CONTAINERS ========== */
+.admin-session-page,
+.admin-session-detail {
+  min-height: 100vh;
   padding: 2rem;
-  max-width: 900px;
-  margin: auto;
+  background-color: #f9fafb;
+}
+
+/* ========== CARD ========== */
+.card {
   background-color: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.05);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 2rem;
+  max-width: 1300px;
+  margin: 0 auto;
+  border: 1px solid #e5e7eb;
 }
 
-.admin-session-page h2 {
-  font-size: 1.8rem;
-  margin-bottom: 1rem;
-  text-align: center;
-  color: #2c3e50;
+/* ========== HEADER ========== */
+.card-header,
+.detail-header {
+  background-color: #ffffff;
+  border-bottom: 2px solid #e5e7eb;
+  padding: 1rem 2rem;
+  border-radius: 12px 12px 0 0;
+  margin: -2rem -2rem 2rem -2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.session-table {
+.card-header h2,
+.header-content h2 {
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.session-count {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+/* ========== SEARCH ========== */
+.search-container {
+  margin-bottom: 1.5rem;
+}
+
+.search-input-wrapper {
+  position: relative;
+  max-width: 400px;
+}
+
+.session-search-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  padding-right: 2.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: #ffffff;
+  color: #1f2937;
+}
+
+.clear-search {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #d1d5db;
+  border: none;
+  border-radius: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: white;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+/* ========== TABLES ========== */
+.table-container {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.session-table,
+.session-log-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 1rem;
-  background-color: #fdfdfd;
+  background: #ffffff;
+  min-width: 800px;
 }
 
-.session-table thead {
-  background-color: #f5f5f5;
-  border-bottom: 2px solid #ddd;
+thead {
+  background-color: #f3f4f6;
 }
 
-.session-table th,
-.session-table td {
-  padding: 0.75rem 1rem;
+th {
+  padding: 1rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
   text-align: left;
-  border-bottom: 1px solid #eee;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.session-table tr:hover {
-  background-color: #f0f8ff;
+td {
+  padding: 1rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.95rem;
 }
 
-.session-table th {
-  font-weight: bold;
-  color: #34495e;
+tr:hover {
+  background-color: #f1f5f9;
 }
 
-.session-table button {
-  padding: 6px 12px;
-  background-color: #3498db;
+/* ========== BUTTONS ========== */
+.view-button,
+.retry-button,
+.back-button {
+  background-color: #3b82f6;
   color: white;
   border: none;
+  padding: 0.5rem 1rem;
   border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
-.session-table button:hover {
-  background-color: #2980b9;
+.view-button:hover,
+.retry-button:hover {
+  background-color: #2563eb;
 }
-.admin-session-detail {
-  padding: 2rem;
-  max-width: 95%;
+
+.back-button {
+  background-color: #6b7280;
+}
+
+.back-button:hover {
+  background-color: #4b5563;
+}
+
+.back-link {
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+/* ========== BADGES ========== */
+.action-badge,
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+/* Action badge colors */
+.action-create { background: #dcfce7; color: #166534; }
+.action-update { background: #e0f2fe; color: #1e40af; }
+.action-delete { background: #fee2e2; color: #991b1b; }
+.action-view   { background: #f0fdfa; color: #064e3b; }
+.action-login  { background: #fefce8; color: #92400e; }
+.action-logout { background: #ede9fe; color: #5b21b6; }
+.action-default { background: #e5e7eb; color: #374151; }
+
+/* Status badge colors */
+.status-active    { background: #dcfce7; color: #166534; }
+.status-inactive  { background: #f3f4f6; color: #6b7280; }
+.status-pending   { background: #fef3c7; color: #92400e; }
+.status-completed { background: #dbeafe; color: #1e40af; }
+.status-failed    { background: #fee2e2; color: #991b1b; }
+.status-default   { background: #f3f4f6; color: #6b7280; }
+
+/* ========== OTHER ========== */
+.loading-container,
+.error-container {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
   margin: auto;
 }
 
-.admin-session-detail h2 {
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Summary */
+.summary-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.summary-stats {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #3b82f6;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+/* No results */
+.no-results {
   text-align: center;
-  margin-bottom: 1rem;
-}
-
-.session-log-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: #fff;
-}
-
-.session-log-table th,
-.session-log-table td {
-  padding: 0.6rem 0.8rem;
-  border: 1px solid #ddd;
-  text-align: left;
-  font-size: 0.95rem;
-}
-
-.session-log-table thead {
-  background-color: #f4f6f8;
-}
-
-.session-log-table tr:hover {
-  background-color: #f0f8ff;
+  padding: 2rem;
+  color: #6b7280;
 }
