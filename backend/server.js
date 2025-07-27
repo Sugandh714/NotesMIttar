@@ -13,6 +13,7 @@ const ContactMessage = require('./models/ContactMessage');
 require('dotenv').config();
 const nodemailer = require('nodemailer');
 const Transaction = require('./models/Transaction');
+const AdminConfig = require('./models/AdminConfig');
 const crypto = require('crypto');
 // MongoDB connection
 const mongoURI = 'mongodb://localhost:27017/notesmittarDB';
@@ -40,6 +41,8 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 const {
   logAction,
   getSessionLogs,
@@ -47,7 +50,27 @@ const {
   getAllActions
 } = require(path.join(__dirname, '..', 'fabric', 'Doc_function'));
 
+app.get('/api/admin/config/relevance-threshold', async (req, res) => {
+    const config = await AdminConfig.findOne({ key: 'minRelevanceScore' });
+    res.json({ value: config?.value || 80 }); // default to 80 if not set
+});
+app.post('/api/admin/config/relevance-threshold', async (req, res) => {
+    const { value } = req.body;
+const numericValue = Number(value);
 
+if (isNaN(numericValue) || numericValue < 0 || numericValue > 100) {
+  return res.status(400).json({ error: 'Invalid threshold value' });
+}
+
+const config = await AdminConfig.findOneAndUpdate(
+  { key: 'minRelevanceScore' },
+  { value: numericValue },
+  { upsert: true, new: true }
+);
+
+
+    res.json({ message: 'Threshold updated', value: config.value });
+});
 // ✅ Route to log an action to the blockchain
 app.post('/blockchain/log', async (req, res) => {
   try {
@@ -733,10 +756,32 @@ try {
         uploadedBy: existingUser.username,
         uploadDate: new Date()
       });
+      let minRelevanceScore = 80;
+            try {
+                const config = await AdminConfig.findOne({ key: 'minRelevanceScore' });
+                if (config && typeof config.value === 'number') {
+                    minRelevanceScore = config.value;
+                }
+            } catch (configError) {
+                console.warn('⚠️ Could not load admin threshold. Using default 80.');
+            }
+      
+  const existingApproved = await Resource.countDocuments({ course, semester, subject, type, status: 'approved' });
 
-      const existingApproved = await Resource.countDocuments({ course, semester, subject, type, status: 'approved' });
-      const status = (type.toLowerCase() === 'notes' && relevanceScore >= 80 && existingApproved < 2) ? 'approved'
-        : (existingApproved < 2 ? 'approved' : 'pending');
+let status = 'pending';
+
+if (type.toLowerCase() === 'notes') {
+  if (relevanceScore < minRelevanceScore) {
+    status = 'rejected'; // 👈 explicitly reject poor-quality notes
+  } else if (existingApproved < 2) {
+    status = 'approved';
+  }
+} else {
+  if (existingApproved < 2) {
+    status = 'approved';
+  }
+}
+
 
       const resource = await Resource.create({
         filename,
@@ -1182,7 +1227,7 @@ app.get('/api/my-rank', async (req, res) => {
 });
 
 // Fetch filtered resources with view and download counts
-app.get('api/resources', async (req, res) => {
+app.get('/api/resources', async (req, res) => {
   try {
     const { course, semester, subject, type } = req.query;
 
@@ -1198,6 +1243,7 @@ app.get('api/resources', async (req, res) => {
       status: 'approved'
     }).sort({ uploadDate: -1 });
 
+    // ✅ Fetch original filename from GridFS using fileId and include counts
     const enriched = await Promise.all(
       resources.map(async (doc) => {
         let originalName = '';
@@ -1210,8 +1256,8 @@ app.get('api/resources', async (req, res) => {
           originalName = doc.filename;
         }
 
+        // Get view count from ResourceView collection
         const viewCount = await ResourceView.getViewCountByResource(doc._id);
-
         function toTitleCase(str) {
           return str
             .split(' ')
@@ -1231,19 +1277,15 @@ app.get('api/resources', async (req, res) => {
             ...(Array.isArray(doc.unit) ? doc.unit : [])
           ].filter(Boolean).join(' ')),
 
-          // Resource Info
-          filename: doc.filename,
+
+          // ✅ Now sent to frontend
+          filename: doc.filename,      // fallback
           author: doc.uploadedBy,
           year: doc.year,
           unit: doc.unit,
-          viewCount: viewCount,
-          downloadCount: doc.downloadCount || 0,
-          fileUrl: `http://localhost:5000/api/file/${doc.fileId}`,
-
-          // 🧠 AI metadata
-          relevanceScore: doc.relevanceScore ?? null,
-          topicCoverage: doc.topicCoverage ?? [],
-          coverageAnalysis: doc.coverageAnalysis ?? {}
+          viewCount: viewCount,        // ✅ View count from ResourceView
+          downloadCount: doc.downloadCount || 0, // ✅ Download count from Resource
+          fileUrl: `http://localhost:5000/api/file/${doc.fileId}`
         };
       })
     );
@@ -1254,6 +1296,8 @@ app.get('api/resources', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch resources' });
   }
 });
+
+
 const generateFileHash = (fileBuffer) => {
   return crypto.createHash('sha256').update(fileBuffer).digest('hex');
 };

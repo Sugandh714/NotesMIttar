@@ -592,6 +592,10 @@ const ProfilePage = () => {
                     <h3>📚 Manage Resources</h3>
                     <p>Approve, reject, or review uploaded study materials.</p>
                 </Link>
+                <Link to="/admin/check-sessions" className="stat-card">
+                            <h3>🧾 Check Sessions</h3>
+                            <p>View all session-wise activity recorded on blockchain.</p>
+                          </Link>
                 
                 
             </div>
