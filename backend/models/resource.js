@@ -33,7 +33,7 @@ const resourceSchema = new mongoose.Schema({
   }],
   year: {
     type: Number,
-    required: function() {
+    required: function () {
       return this.type === 'PYQs';
     }
   },
@@ -54,43 +54,25 @@ const resourceSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  viewCount: {
+
+  // ✅ NEW FIELDS for AI Relevance Data
+  relevanceScore: {
     type: Number,
-    default: 0
+    default: null
+  },
+  topicCoverage: {
+    type: [mongoose.Schema.Types.Mixed],
+    default: []
+  },
+  coverageAnalysis: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
   }
 });
 
-// Index for faster queries
+// Indexes
 resourceSchema.index({ course: 1, semester: 1, subject: 1, type: 1 });
 resourceSchema.index({ uploadedBy: 1 });
 resourceSchema.index({ status: 1 });
-resourceSchema.index({ downloadCount: -1 }); // For popular resources
-resourceSchema.index({ viewCount: -1 }); // For popular resources
-
-// Virtual for total engagement score
-resourceSchema.virtual('engagementScore').get(function() {
-  // Weight downloads more than views (downloads = 2 points, views = 1 point)
-  return (this.downloadCount * 2) + (this.viewCount * 1);
-});
-
-// Static method to get popular resources
-resourceSchema.statics.getPopularResources = function(limit = 10) {
-  return this.find({ status: 'approved' })
-    .sort({ downloadCount: -1, viewCount: -1 })
-    .limit(limit);
-};
-
-// Static method to get trending resources (high engagement in recent period)
-resourceSchema.statics.getTrendingResources = function(days = 7, limit = 10) {
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - days);
-  
-  return this.find({ 
-    status: 'approved',
-    uploadDate: { $gte: cutoffDate }
-  })
-  .sort({ downloadCount: -1, viewCount: -1 })
-  .limit(limit);
-};
 
 module.exports = mongoose.model('Resource', resourceSchema);

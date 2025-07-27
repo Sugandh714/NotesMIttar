@@ -19,6 +19,10 @@ const mongoURI = 'mongodb://localhost:27017/notesmittarDB';
 const SessionLog = require('./models/SessionLog');
 const { v4: uuidv4 } = require('uuid');
 const blockchain = require('../fabric/Doc_function');
+//AI
+const axios = require('axios');
+const pdfParse = require('pdf-parse');
+const Syllabus = require('./models/Syllabus'); // Ensure this model exists
 
 // Connect to MongoDB
 mongoose.connect(mongoURI, {
@@ -30,7 +34,7 @@ mongoose.connect(mongoURI, {
   console.error('❌ MongoDB connection error:', err);
   process.exit(1);
 });
- // CORS setup
+// CORS setup
 app.use(cors({
   origin: 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -614,270 +618,210 @@ app.post('/api/change-password', async (req, res) => {
 //   next();
 // });
 // Upload Route with proper error handling
+// finalUpload.js
+// Combines AI relevance analysis + GridFS + full blockchain & session logging
+
 app.post('/api/upload', (req, res) => {
-  // Use multer middleware with error handling
   upload.single('pdf')(req, res, async (err) => {
-    // Handle multer errors
     if (err) {
       console.error('Multer error:', err);
-
-      if (err instanceof multer.MulterError) {
-        switch (err.code) {
-          case 'LIMIT_FILE_SIZE':
-            return res.status(400).json({
-              error: 'File too large! Please choose a file smaller than 10MB.'
-            });
-
-          default:
-            return res.status(400).json({
-              error: 'File upload error: ' + err.message
-            });
-        }
-      } else {
-        // Custom errors (like file type validation)
-        return res.status(400).json({
-          error: err.message
-        });
-      }
+      return res.status(400).json({ error: err.message });
     }
 
-    // Continue with the upload process
-    // console.log('Upload request received');
-    // console.log('Headers:', req.headers);
-    // console.log('Body:', req.body);
-    // console.log('File:', req.file ? req.file.originalname : 'No file');
-
     try {
-      if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-      }
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+      if (!isGridFSReady) return res.status(503).json({ error: 'GridFS not ready' });
 
-      if (!isGridFSReady) {
-        return res.status(503).json({ error: 'GridFS not ready. Please try again in a moment.' });
-      }
-
-      // Extract user info from headers
       const uploadedBy = req.headers.username || 'unknown';
-      // const sessionID = req.headers['session-id'] || 'unknown-session';
-      // const sessionUsername = uploadedBy;
-      
-
       const email = req.headers.email || 'unknown@example.com';
-      
-
-      // Validate that user exists first
-      const existingUser = await User.findOne({
-        $or: [
-          { username: uploadedBy },
-          { email: email }
-        ]
-      });
-
-      if (!existingUser) {
-        return res.status(400).json({
-          error: 'User not found. Please login again.'
-        });
-      }
+      const existingUser = await User.findOne({ $or: [{ username: uploadedBy }, { email }] });
+      if (!existingUser) return res.status(400).json({ error: 'User not found' });
 
       const { course, semester, subject, type, year } = req.body;
       let { unit } = req.body;
+      unit = typeof unit === 'string' ? [unit] : Array.isArray(unit) ? unit : [];
 
-      // 🚫 Reject if PYQ for the same year already exists
       if (type.toLowerCase() === 'pyqs' && year) {
-        const duplicatePYQ = await Resource.findOne({
-          type: 'PYQs',
-          year,
-          course,
-          semester,
-          subject
-        });
-
-        if (duplicatePYQ) {
-          return res.status(409).json({
-            error: `❌ A PYQ for year ${year} already exists for this subject.`,
-            conflict: true
-          });
+        const duplicate = await Resource.findOne({ type: 'PYQs', year, course, semester, subject });
+        if (duplicate) {
+          return res.status(409).json({ error: `PYQ for year ${year} already exists.`, conflict: true });
         }
       }
 
-      // Handle unit array properly
-      if (unit) {
-        if (typeof unit === 'string') {
-          unit = [unit];
-        } else if (Array.isArray(unit)) {
-          // unit is already an array, keep it as is
-        } else {
-          unit = [];
-        }
-      } else {
-        unit = [];
-      }
-
-      console.log('Processing upload for:', {
-        course,
-        semester,
-        subject,
-        type,
-        uploadedBy: existingUser.username
-      });
-
-      // Create filename
       const timestamp = Date.now();
       const unitStr = unit.length > 0 ? unit.join('_') : 'general';
       const filename = `${course}_${semester}_${subject}_${type}_${unitStr}_${timestamp}${path.extname(req.file.originalname)}`;
 
-      console.log('Generated filename:', filename);
+      const fileBuffer = req.file.buffer;
+      const fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+      const existing = await Resource.findOne({ fileHash, status: 'approved' });
+      if (existing) {
+        return res.status(409).json({ error: 'Duplicate file already approved.', status: 'rejected' });
+      }
 
-      // Upload to GridFS
-      const gridFSFile = await uploadToGridFS(req.file.buffer, filename, {
+      let relevanceScore = null, topicCoverage = [], coverageAnalysis = {};
+      try {
+        const { text: fileText } = await pdfParse(fileBuffer);
+        const syllabus = await Syllabus.findOne({ course: course.trim(), semester: semester.trim(), subject: subject.trim() });
+
+        if (!syllabus || !syllabus.units?.length) return res.status(400).json({ error: 'No syllabus data found' });
+
+        let topics = [];
+        if (type.toLowerCase() === 'notes' && unit.length > 0) {
+          const formattedUnit = `UNIT ${unit[0].match(/\d+/)?.[0]}`;
+          const unitData = syllabus.units.find(u => u.unitName.toUpperCase().includes(formattedUnit));
+          if (!unitData?.topics?.length) return res.status(400).json({ error: 'Unit has no topics' });
+          topics = unitData.topics.filter(t => t.name && Array.isArray(t.subtopics));
+        } else {
+          topics = syllabus.units.flatMap(u => u.topics || []).filter(t => t.name && Array.isArray(t.subtopics));
+        }
+
+        const prompt = `You are an AI that evaluates academic content.\n\nSyllabus:\n${topics.map((t, i) => `${i + 1}. ${t.name}\n  Subtopics:\n  ${t.subtopics.map(st => `- ${st}`).join('\n')}`).join('\n\n')}\n\nContent:\n"""${fileText.slice(0, 5000)}"""\n\nReturn JSON only:\n{"results":[{"topic":"...","matched":3,"total":5,"coveredSubtopics":[...],"uncoveredSubtopics":[...],"coverageQuality":"good","notes":"..."}],"overallAssessment":"..."}`;
+
+        const geminiRes = await axios.post(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 1000, topP: 0.8, topK: 40 }
+        });
+        const normalizeQuotes = (str) => {
+  return str.replace(/:\s*"([^"]*?)\n([^"]*?)"/g, (match, p1, p2) => {
+    return `: "${p1} ${p2}"`; // join broken lines inside quote
+  });
+};
+        let responseText = geminiRes.data.candidates[0]?.content?.parts[0]?.text || '';
+       
+        const cleanedResponse = normalizeQuotes(responseText)
+  .replace(/```json|```/g, '')
+  .replace(/^\s*[\w\s]*?{/, '{')
+  .replace(/}\s*[\w\s]*?$/, '}')
+  .trim();
+       console.log("🔄 Gemini Raw Response(After):\n", cleanedResponse);
+       let parsed;
+try {
+  parsed = JSON.parse(cleanedResponse);
+} catch (e) {
+  console.error("❌ Still invalid JSON:", e.message);
+  return res.status(500).json({ error: 'Final Gemini JSON parse failed' });
+}
+
+
+        const results = parsed?.results || [];
+        const totalSubtopics = results.reduce((sum, r) => sum + r.total, 0);
+        const coveredSubtopics = results.reduce((sum, r) => sum + r.matched, 0);
+        if (totalSubtopics > 0) {
+          relevanceScore = Math.round((coveredSubtopics / totalSubtopics) * 100);
+        }
+
+        topicCoverage = results;
+        coverageAnalysis = {
+          totalSubtopics,
+          coveredSubtopics,
+          uncoveredSubtopics: totalSubtopics - coveredSubtopics,
+          overallCoveragePercentage: relevanceScore,
+          overallAssessment: parsed?.overallAssessment || 'No assessment'
+        };
+      } catch (e) {
+        console.error('AI relevance check failed:', e.message);
+      }
+
+      const gridFSFile = await uploadToGridFS(fileBuffer, filename, {
         originalName: req.file.originalname,
-        subject: subject,
-        semester: semester,
-        course: course,
-        type: type,
-        unit: unit,
+        subject,
+        semester,
+        course,
+        type,
+        unit,
         uploadedBy: existingUser.username,
         uploadDate: new Date()
       });
 
-      console.log('GridFS upload successful:', gridFSFile._id);
+      const existingApproved = await Resource.countDocuments({ course, semester, subject, type, status: 'approved' });
+      const status = (type.toLowerCase() === 'notes' && relevanceScore >= 80 && existingApproved < 2) ? 'approved'
+        : (existingApproved < 2 ? 'approved' : 'pending');
 
-      // Check existing approved resources for this combination
-      let existing = 0;
-
-      if (type.toLowerCase() === 'notes' && unit.length > 0) {
-        // Check how many existing approved notes overlap on unit level
-        const existingNotes = await Resource.find({
-          course,
-          semester,
-          subject,
-          type,
-          status: 'approved',
-          unit: { $in: unit }
-        }).lean();
-
-        existing = existingNotes.length;
-      } else {
-        // Use simple count for other types like PYQs
-        existing = await Resource.countDocuments({
-          course,
-          semester,
-          subject,
-          type,
-          status: 'approved'
-        });
-      }
-
-
-      const status = existing < 2 ? 'approved' : 'pending';
-      console.log(`Existing approved resources: ${existing}, Status: ${status}`);
-
-      // Create resource record
       const resource = await Resource.create({
-        filename: filename,
+        filename,
         fileId: gridFSFile._id,
         course,
         semester,
         subject,
         type,
         year: year || null,
-        unit: unit,
+        unit,
         status,
         uploadedBy: existingUser.username,
-        uploadDate: new Date()
+        uploadDate: new Date(),
+        relevanceScore,
+        fileHash,
+        topicCoverage,
+        coverageAnalysis
       });
 
-      console.log('Resource record created:', resource._id);
-
-      // Update user score - FIXED: Update the existing user by their _id
-      const scoreIncrement = status === 'approved' ? 1 : 0.5;
-
-      await User.findByIdAndUpdate(
-        existingUser._id,
-        {
-          $inc: { uploadCount: scoreIncrement }
-        },
-        { new: true }
-      );
-
-      console.log(`✅ Upload completed: ${filename}, Status: ${status}`);
-      console.log(`✅ Updated uploadCount for user: ${existingUser.username}`);
-      console.log('📦 Session Info:', req.sessionInfo);
-      console.log('📥 Calling logSessionAction for Upload...');
+      const scoreInc = status === 'approved' ? 1 : 0.5;
+      await User.findByIdAndUpdate(existingUser._id, { $inc: { uploadCount: scoreInc } });
 
       await logSessionAction(req, 'uploadResources', {
         resourceID: resource._id.toString(),
-        filename: resource.filename,
-        status: resource.status,
+        filename,
+        status,
         uploadTimestamp: new Date()
       });
-     const sessionInfo = req.sessionInfo || {};
-const sessionID = sessionInfo.sessionID || 'unknown-session';
-const sessionUsername = sessionInfo.sessionUsername || uploadedBy;
 
-console.log('🔍 logAction payload:', {
-  sessionID,
-  sessionUsername,
-  timestamp: new Date().toISOString(),
-  fileID: resource._id?.toString(),
-  gridID: gridFSFile._id?.toString(),
-  fileStatus: resource.status || null,
-  contributorUsername: null,
-  contributorStatus: null
-});
-if (!resource?._id || !gridFSFile?._id || !resource.status) {
-  console.error('❌ Missing one or more required fields for blockchain log');
-  console.log('resource._id:', resource?._id);
-  console.log('gridFSFile._id:', gridFSFile?._id);
-  console.log('resource.status:', resource?.status);
-} else {
-  try {
-    await blockchain.logAction({
-      sessionID,
-      sessionUsername,
-      action: 'uploadResource',
-      timestamp: new Date().toISOString(),
-      fileID: resource._id.toString(),
-      gridID: gridFSFile._id.toString(),
-      fileStatus: resource.status,
-      contributorUsername: null,
-      contributorStatus: null
-    });
-  } catch (err) {
-    console.error('❌ Blockchain logAction error:', err.message);
-  }
-}
+      try {
+        const sessionID = req.sessionInfo?.sessionID || 'unknown-session';
+        await blockchain.logAction({
+          sessionID,
+          sessionUsername: req.sessionInfo?.sessionUsername || uploadedBy,
+          action: 'uploadResource',
+          timestamp: new Date().toISOString(),
+          fileID: resource._id.toString(),
+          gridID: gridFSFile._id.toString(),
+          fileStatus: status
+        });
+      } catch (err) {
+        console.error('Blockchain log error:', err.message);
+      }
 
-// try {
-//   await blockchain.logAction({
-//     sessionID,
-//     sessionUsername,
-//     action: 'uploadResource',
-//     timestamp: new Date().toISOString(),
-//     fileID: resource._id?.toString(),
-//     gridID: gridFSFile._id?.toString(),
-//     fileStatus: resource.status || null,
-//     contributorUsername: null,
-//     contributorStatus: null
-//   });
-// } catch (err) {
-//   console.error('❌ Failed to log blockchain action:', err.message);
-// }
-
-
-      res.status(201).json({
-        message: `Upload ${status}! Your contribution has been ${status === 'approved' ? 'accepted' : 'submitted for review'}.`,
+      return res.status(201).json({
+        message: `Upload ${status}.`,
         status,
-        filename: filename,
-        fileId: gridFSFile._id
+        filename,
+        fileId: gridFSFile._id,
+        relevanceScore,
+        coverageAnalysis,
+        topicCoverage
       });
 
     } catch (error) {
       console.error('Upload error:', error);
-      res.status(500).json({ error: 'Upload failed: ' + error.message });
+      return res.status(500).json({ error: 'Upload failed: ' + error.message });
     }
   });
 });
+
+function generateRecommendations(topicCoverage, relevanceScore, status) {
+  const recommendations = [];
+
+  if (relevanceScore < 60) {
+    recommendations.push("Content coverage is below expectations. Consider adding more comprehensive explanations.");
+  }
+
+  const poorCoverage = topicCoverage.filter(t => t.coverageQuality === 'poor');
+  if (poorCoverage.length > 0) {
+    recommendations.push(`Improve coverage for: ${poorCoverage.map(t => t.topic).join(', ')}`);
+  }
+
+  const uncoveredTopics = topicCoverage.filter(t => t.matched === 0);
+  if (uncoveredTopics.length > 0) {
+    recommendations.push(`Missing topics: ${uncoveredTopics.map(t => t.topic).join(', ')}`);
+  }
+
+  if (status === 'approved' && relevanceScore >= 90) {
+    recommendations.push("Excellent coverage! This content comprehensively addresses the syllabus requirements.");
+  }
+
+  return recommendations;
+}
+
 
 // Fetch Contribution History Route
 app.get('/api/my-resources', async (req, res) => {
@@ -894,17 +838,21 @@ app.get('/api/my-resources', async (req, res) => {
     console.log(`Found ${resources.length} resources for user ${username}`);
 
     const enriched = resources.map(doc => ({
-      filename: doc.filename,
-      course: doc.course,
-      semester: doc.semester,
-      subject: doc.subject,
-      type: doc.type,
-      unit: doc.unit,
-      year: doc.year,
-      status: doc.status,
-      uploadDate: doc.uploadDate,
-      fileId: doc.fileId
-    }));
+  filename: doc.filename,
+  course: doc.course,
+  semester: doc.semester,
+  subject: doc.subject,
+  type: doc.type,
+  unit: doc.unit,
+  year: doc.year,
+  status: doc.status,
+  uploadDate: doc.uploadDate,
+  fileId: doc.fileId,
+  relevanceScore: doc.relevanceScore ?? null,
+  topicCoverage: doc.topicCoverage ?? [],
+  coverageAnalysis: doc.coverageAnalysis ?? {}
+}));
+
 
     res.json(enriched);
   } catch (error) {
@@ -940,7 +888,7 @@ app.post('/api/record-view/:resourceId', async (req, res) => {
     };
 
     const view = await ResourceView.recordView(viewData);
-    
+
     if (view) {
       // Increment view count in Resource model
       await Resource.findByIdAndUpdate(
@@ -954,15 +902,15 @@ app.post('/api/record-view/:resourceId', async (req, res) => {
         ipAddress: getUserIP(req),
         viewedAt: new Date()
       });
-     await blockchain.logAction({
-  sessionID: req.sessionInfo.sessionID,
-  sessionUsername: req.sessionInfo.sessionUsername,
-  action: 'viewResource',
-  timestamp: new Date().toISOString(),
-  fileID: resource._id.toString(),
-  gridID: resource.fileId.toString(),
-  fileStatus: 'approved'
-});
+      await blockchain.logAction({
+        sessionID: req.sessionInfo.sessionID,
+        sessionUsername: req.sessionInfo.sessionUsername,
+        action: 'viewResource',
+        timestamp: new Date().toISOString(),
+        fileID: resource._id.toString(),
+        gridID: resource.fileId.toString(),
+        fileStatus: 'approved'
+      });
 
 
       console.log(`✅ View recorded for resource ${resourceId} by user ${user.username}`);
@@ -1011,14 +959,14 @@ app.get('/api/file/:id', async (req, res) => {
         { new: true }
       );
       await blockchain.logAction({
-  sessionID: req.sessionInfo.sessionID,
-  sessionUsername: req.sessionInfo.sessionUsername,
-  action: 'downloadResource',
-  timestamp: new Date().toISOString(),
-  fileID: resource._id.toString(),
-  gridID: resource.fileId.toString(),
-  fileStatus: 'approved'
-});
+        sessionID: req.sessionInfo.sessionID,
+        sessionUsername: req.sessionInfo.sessionUsername,
+        action: 'downloadResource',
+        timestamp: new Date().toISOString(),
+        fileID: resource._id.toString(),
+        gridID: resource.fileId.toString(),
+        fileStatus: 'approved'
+      });
 
       console.log(`✅ Download count incremented for resource ${resource._id}`);
     }
@@ -1234,7 +1182,7 @@ app.get('/api/my-rank', async (req, res) => {
 });
 
 // Fetch filtered resources with view and download counts
-app.get('/api/resources', async (req, res) => {
+app.get('api/resources', async (req, res) => {
   try {
     const { course, semester, subject, type } = req.query;
 
@@ -1250,7 +1198,6 @@ app.get('/api/resources', async (req, res) => {
       status: 'approved'
     }).sort({ uploadDate: -1 });
 
-    // ✅ Fetch original filename from GridFS using fileId and include counts
     const enriched = await Promise.all(
       resources.map(async (doc) => {
         let originalName = '';
@@ -1263,8 +1210,8 @@ app.get('/api/resources', async (req, res) => {
           originalName = doc.filename;
         }
 
-        // Get view count from ResourceView collection
         const viewCount = await ResourceView.getViewCountByResource(doc._id);
+
         function toTitleCase(str) {
           return str
             .split(' ')
@@ -1284,15 +1231,19 @@ app.get('/api/resources', async (req, res) => {
             ...(Array.isArray(doc.unit) ? doc.unit : [])
           ].filter(Boolean).join(' ')),
 
-
-          // ✅ Now sent to frontend
-          filename: doc.filename,      // fallback
+          // Resource Info
+          filename: doc.filename,
           author: doc.uploadedBy,
           year: doc.year,
           unit: doc.unit,
-          viewCount: viewCount,        // ✅ View count from ResourceView
-          downloadCount: doc.downloadCount || 0, // ✅ Download count from Resource
-          fileUrl: `http://localhost:5000/api/file/${doc.fileId}`
+          viewCount: viewCount,
+          downloadCount: doc.downloadCount || 0,
+          fileUrl: `http://localhost:5000/api/file/${doc.fileId}`,
+
+          // 🧠 AI metadata
+          relevanceScore: doc.relevanceScore ?? null,
+          topicCoverage: doc.topicCoverage ?? [],
+          coverageAnalysis: doc.coverageAnalysis ?? {}
         };
       })
     );
@@ -1308,7 +1259,7 @@ const generateFileHash = (fileBuffer) => {
 };
 //Adding new portion for ADMIN
 // Middleware to restrict access to admin only
-const adminUsernames = ['q', 'h', 'rahul']; // replace with your team usernames
+
 const AdminAction = require('./models/Transaction');
 
 const isAdmin = async (req, res, next) => {
@@ -1345,7 +1296,6 @@ const isAdmin = async (req, res, next) => {
     res.status(500).json({ error: 'Authorization check failed' });
   }
 };
-
 // 1)For ManageContributors
 app.get('/api/admin/contributors', isAdmin, async (req, res) => {
   try {
@@ -1380,13 +1330,13 @@ app.post('/api/admin/contributor/suspend', isAdmin, async (req, res) => {
       reason: reason || 'No reason provided'
     });
     await blockchain.logAction({
-  sessionID: req.sessionInfo.sessionID,
-  sessionUsername: req.sessionInfo.sessionUsername,
-  action: isSuspending ? 'suspendContributor' : 'activateContributor',
-  timestamp: new Date().toISOString(),
-  contributorUsername: user.username,
-  contributorStatus: user.status
-});
+      sessionID: req.sessionInfo.sessionID,
+      sessionUsername: req.sessionInfo.sessionUsername,
+      action: isSuspending ? 'suspendContributor' : 'activateContributor',
+      timestamp: new Date().toISOString(),
+      contributorUsername: user.username,
+      contributorStatus: user.status
+    });
 
 
     const log = new Transaction({
@@ -1476,15 +1426,6 @@ app.get('/api/admin/pending-resources', isAdmin, async (req, res) => {
         };
       })
     );
-    //     await logSessionAction(req, 'manageResources', {
-    //   type: 'APPROVE',
-    //   resourceID: resource._id.toString(),
-    //   filename: resource.filename,
-    //   contributor: resource.uploadedBy,
-    //    relevanceScore: resource.relevanceScore || 0
-    // });
-
-
 
     res.json(enrichedResources);
   } catch (error) {
@@ -1562,23 +1503,23 @@ app.post('/api/admin/approve-resource/:resourceId', isAdmin, async (req, res) =>
             }
           });
           await blockchain.logAction({
-  sessionID: req.sessionInfo.sessionID,
-  sessionUsername: req.sessionInfo.sessionUsername,
-  action: 'approveResource',
-  timestamp: new Date().toISOString(),
-  fileID: resource._id.toString(),
-  gridID: resource.fileId.toString(),
-  fileStatus: 'approved'
-});
-await blockchain.logAction({
-  sessionID: req.sessionInfo.sessionID,
-  sessionUsername: req.sessionInfo.sessionUsername,
-  action: 'rejectResource',
-  timestamp: new Date().toISOString(),
-  fileID: oldResource._id.toString(),
-  gridID: oldResource.fileId.toString(),
-  fileStatus: 'rejected'
-});
+            sessionID: req.sessionInfo.sessionID,
+            sessionUsername: req.sessionInfo.sessionUsername,
+            action: 'approveResource',
+            timestamp: new Date().toISOString(),
+            fileID: resource._id.toString(),
+            gridID: resource.fileId.toString(),
+            fileStatus: 'approved'
+          });
+          await blockchain.logAction({
+            sessionID: req.sessionInfo.sessionID,
+            sessionUsername: req.sessionInfo.sessionUsername,
+            action: 'rejectResource',
+            timestamp: new Date().toISOString(),
+            fileID: oldResource._id.toString(),
+            gridID: oldResource.fileId.toString(),
+            fileStatus: 'rejected'
+          });
 
 
         } catch (err) {
@@ -1624,14 +1565,14 @@ await blockchain.logAction({
       relevanceScore: resource.relevanceScore || 0
     });
     await blockchain.logAction({
-  sessionID: req.sessionInfo.sessionID,
-  sessionUsername: req.sessionInfo.sessionUsername,
-  action: 'approveResource',
-  timestamp: new Date().toISOString(),
-  fileID: resource._id.toString(),
-  gridID: resource.fileId.toString(),
-  fileStatus: 'approved'
-});
+      sessionID: req.sessionInfo.sessionID,
+      sessionUsername: req.sessionInfo.sessionUsername,
+      action: 'approveResource',
+      timestamp: new Date().toISOString(),
+      fileID: resource._id.toString(),
+      gridID: resource.fileId.toString(),
+      fileStatus: 'approved'
+    });
 
     // Update user's upload count if not already counted
     const user = await User.findOne({ username: resource.uploadedBy });
@@ -1701,14 +1642,14 @@ app.post('/api/admin/reject-resource/:resourceId', isAdmin, async (req, res) => 
       reason: reason || 'No reason provided'
     });
     await blockchain.logAction({
-  sessionID: req.sessionInfo.sessionID,
-  sessionUsername: req.sessionInfo.sessionUsername,
-  action: 'rejectResource',
-  timestamp: new Date().toISOString(),
-  fileID: resource._id.toString(),
-  gridID: resource.fileId.toString(),
-  fileStatus: 'rejected'
-});
+      sessionID: req.sessionInfo.sessionID,
+      sessionUsername: req.sessionInfo.sessionUsername,
+      action: 'rejectResource',
+      timestamp: new Date().toISOString(),
+      fileID: resource._id.toString(),
+      gridID: resource.fileId.toString(),
+      fileStatus: 'rejected'
+    });
 
     res.json({ success: true, message: 'Resource rejected successfully' });
 
@@ -1838,8 +1779,82 @@ app.get('/api/admin/stats', isAdmin, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch stats' });
   }
 });
+async function getTopicsFromDB(course, semester, subject, unitName) {
+  const syllabus = await Syllabus.findOne({ course, semester, subject });
+  if (!syllabus) return [];
+  const unit = syllabus.units.find(u => u.unitName === unitName);
+  return unit ? unit.topics : [];
+}
+app.post('/api/ai/relevance', async (req, res) => {
+  const { fileText, course, semester, subject, unit } = req.body;
 
+  const topics = await getTopicsFromDB(course, semester, subject, unit);
+  if (!topics || topics.length === 0) {
+    return res.status(400).json({ error: 'No topics found for the provided syllabus' });
+  }
 
+  const prompt = `
+You are an AI expert that evaluates the *quality and relevance* of a student's academic notes compared to the official syllabus.
+
+Syllabus for ${subject} - ${unit}:
+${topics.map((t, i) => `${i + 1}. ${t.name || t}`).join('\n')}
+
+Uploaded Notes Content:
+""" 
+${fileText}
+"""
+
+Check the following:
+- How many syllabus topics are clearly explained in the notes?
+- Are they meaningful or just keyword mentions?
+- Are irrelevant topics or incorrect concepts included?
+
+Now return this result as JSON ONLY like:
+{"matched": X, "total": Y, "qualityFactor": 0.85}
+`;
+
+  try {
+    const geminiRes = await axios.post(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        contents: [{ parts: [{ text: prompt }] }]
+      }
+    );
+
+    const raw = geminiRes.data.candidates[0]?.content?.parts[0]?.text || '';
+    console.log("🔄 Gemini Raw Response:", raw);
+
+    // ✅ Attempt to extract JSON block using regex
+    const jsonMatch = raw.match(/\{[\s\S]*?\}/);
+    if (!jsonMatch) {
+      console.error("❌ Failed to extract JSON object from Gemini response");
+      return res.status(500).json({ error: 'AI relevance check failed: No JSON found' });
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch (err) {
+      console.error("❌ Extracted JSON is invalid:", err.message);
+      return res.status(500).json({ error: 'AI relevance check failed: Malformed JSON' });
+    }
+
+    if (!parsed.matched || !parsed.total || !parsed.qualityFactor) {
+      console.error("❌ Incomplete JSON fields:", parsed);
+      return res.status(500).json({ error: 'AI relevance check failed: Incomplete JSON fields' });
+    }
+
+    const rawScore = (parsed.matched / parsed.total) * parsed.qualityFactor;
+    const relevanceScore = Math.round(rawScore * 100);
+
+    console.log("✅ Parsed relevance score:", relevanceScore);
+    return res.json({ relevanceScore });
+
+  } catch (err) {
+    console.error('Gemini API error:', err.message);
+    return res.status(500).json({ error: 'AI relevance check failed' });
+  }
+});
 
 
 const PORT = 5000;

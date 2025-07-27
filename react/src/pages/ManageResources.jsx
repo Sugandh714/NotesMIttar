@@ -111,12 +111,26 @@ const AdminDashboard = () => {
       </span>
     );
   };
-
+ 
   const getScoreColor = (score) => {
     if (score >= 90) return 'text-green-600';
     if (score >= 75) return 'text-yellow-600';
     return 'text-red-600';
   };
+   const formatRelevanceScore = (score) => {
+  if (typeof score === 'number') {
+    return `${Math.round(score)}%`;
+  }
+  return 'N/A';
+};
+
+const getAIInsights = (aiInsights) => {
+  if (aiInsights && typeof aiInsights === 'string') {
+    return aiInsights.length > 50 ? aiInsights.substring(0, 50) + '...' : aiInsights;
+  }
+  return 'No insights available';
+};
+
   const fetchPendingResources = async () => {
       const adminUsername = sessionStorage.getItem('username');
       if (!adminUsername) {
@@ -212,10 +226,13 @@ const AdminDashboard = () => {
                       <div className="flex items-center gap-2">
                         <Brain size={16} className="text-gray-400" />
                         <div>
-                          <div className="font-semibold text-green-600">92% Relevance</div>
-                          <div className="text-sm text-gray-600">
-                            Database Normalization, ACID Properties...
-                          </div>
+                          <div className={`font-semibold ${getScoreColor(doc.relevanceScore || 0)}`}>
+  {formatRelevanceScore(doc.relevanceScore)} Relevance
+</div>
+<div className="text-sm text-gray-600">
+  {getAIInsights(doc.aiInsights)}
+</div>
+
                         </div>
                       </div>
                     </td>
@@ -276,8 +293,13 @@ const AdminDashboard = () => {
                                     <div className="flex items-center gap-2">
                                       <Brain size={14} className="text-gray-400" />
                                       <div>
-                                        <div className="text-sm font-semibold text-yellow-600">88%</div>
-                                        <div className="text-xs text-gray-500">Basic SQL, ER Diagrams</div>
+                                        <div className={`text-sm font-semibold ${getScoreColor(resource.relevanceScore || 0)}`}>
+  {formatRelevanceScore(resource.relevanceScore)}
+</div>
+<div className="text-xs text-gray-500">
+  {getAIInsights(resource.aiInsights)}
+</div>
+
                                       </div>
                                     </div>
                                     <div>

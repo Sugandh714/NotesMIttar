@@ -167,9 +167,10 @@ body {
 }
 
 .profile-info p {
-    margin: 4px 0;
+    margin: 0;
     font-size: 14px;
 }
+
 
 .upvote-button:hover {
     background-color: #cce4ff;

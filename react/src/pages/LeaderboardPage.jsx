@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../style/Leaderboard.css';
+import '../style/LeaderBoard.css';
 import Navbar from '../component/Navbar';
 function LeaderboardPage() {
   const [users, setUsers] = useState([]);
