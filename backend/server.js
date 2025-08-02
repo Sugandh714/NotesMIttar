@@ -1741,7 +1741,15 @@ app.delete('/api/admin/remove-resource/:resourceId', isAdmin, async (req, res) =
       reason: reason || 'No reason provided',
       relevanceScore: resource.relevanceScore || 0
     });
-
+    await blockchain.logAction({
+      sessionID: req.sessionInfo.sessionID,
+      sessionUsername: req.sessionInfo.sessionUsername,
+      action: 'removeResource',
+      timestamp: new Date().toISOString(),
+      fileID: resource._id.toString(),
+      gridID: resource.fileId.toString(),
+      fileStatus: 'rejected'
+    });
     // 🗑️ Delete file from GridFS
     if (resource.fileId) {
       try {

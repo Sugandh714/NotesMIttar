@@ -166,7 +166,7 @@ const getAIInsights = (aiInsights) => {
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-lg shadow-lg mb-8">
         <div className="flex items-center gap-3">
           <FileText size={32} />
-          <h1 className="text-3xl font-bold">Resource Management Dashboard</h1>
+          <h1 className="text-3xl font-bold">Pending Resource Management Dashboard</h1>
         </div>
       </div>
 
